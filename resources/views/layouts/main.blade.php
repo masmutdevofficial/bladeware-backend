@@ -25,6 +25,69 @@
         .text-black {
             color:black!important;
         }
+        /* Force all default grays to black to meet design requirement */
+        .text-gray-100, .text-gray-200, .text-gray-300, .text-gray-400,
+        .text-gray-500, .text-gray-600, .text-gray-700, .text-gray-800, .text-gray-900,
+        .text-muted, .text-primary, .text-success, .text-warning, .text-danger, .text-info, .text-secondary {
+            color: #000 !important;
+        }
+
+        /* Table borders and headers should be black */
+        .table, .table-bordered, .table-bordered th, .table-bordered td,
+        table.table td, table.table th {
+            border: 1px solid #000 !important;
+            border-color: #000 !important;
+        }
+        .thead-dark th {
+            background-color: #fff !important;
+            color: #000 !important;
+            border-color: #000 !important;
+        }
+        /* Ensure table-borderless also uses black borders */
+        .table-borderless th, .table-borderless td, .table-borderless {
+            border: 1px solid #000 !important;
+        }
+
+    /* Badges text to black */
+    .badge { color: #000 !important; }
+    /* Buttons default to black text, except primary and danger which must remain white */
+    .btn { color: #000; }
+    .btn .fa, .btn i { color: #000; }
+    .btn-primary, .btn-danger { color: #fff !important; }
+    .btn-primary .fa, .btn-primary i,
+    .btn-danger .fa, .btn-danger i { color: #fff !important; }
+    .text-success { color: #06734b !important; }
+
+    /* Keep sidebar fixed on scroll */
+    #wrapper .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        overflow-y: auto;
+        /* ensure it sits above page background but below modals */
+        z-index: 1020;
+    }
+    /* Reserve space for fixed sidebar */
+    #content-wrapper {
+        margin-left: 14rem; /* default sidebar width in SB Admin 2 */
+    }
+    /* When sidebar is toggled/collapsed, reduce reserved space */
+    body.sidebar-toggled #content-wrapper {
+        margin-left: 6.5rem;
+    }
+    /* Also handle when the "toggled" class is applied directly to sidebar */
+    #wrapper .sidebar.toggled + #content-wrapper {
+        margin-left: 6.5rem;
+    }
+    /* Avoid horizontal scroll from fixed layout */
+    body { overflow-x: hidden; }
+
+    /* On small screens let content take full width; sidebar overlays when opened */
+    @media (max-width: 768px) {
+        #content-wrapper { margin-left: 0; }
+        body.sidebar-toggled #content-wrapper { margin-left: 0; }
+    }
     </style>
 </head>
 

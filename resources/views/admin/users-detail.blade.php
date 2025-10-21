@@ -32,6 +32,11 @@
     .table td, .table th {
         padding:0.25rem!important;
     }
+    /* Ensure all modal form text is black */
+    .modal-content, .modal-content label, .modal-content .form-control, .modal-content .modal-title {
+        color: #000 !important;
+    }
+    .modal-content ::placeholder { color: #000 !important; opacity: 1; }
 </style>
 <div class="card p-4">
     <div class="d-flex justify-content-start align-items-center mb-3">
@@ -242,15 +247,15 @@
                         <input type="text" class="form-control" name="wallet_address" value="{{ $user->wallet_address ?? '' }}">
                     </div>
 
-                    <!-- Saldo -->
+                    <!-- Balance -->
                     <div class="form-group">
-                        <label>Saldo</label>
+                        <label>Balance</label>
                         <input type="number" class="form-control" name="saldo" value="{{ $finance->saldo ?? '0.00' }}">
                     </div>
 
-                    <!-- Komisi -->
+                    <!-- Commission -->
                     <div class="form-group">
-                        <label>Komisi</label>
+                        <label>Commission</label>
                         <input type="number" class="form-control" name="komisi" value="{{ $finance->komisi ?? '0.00' }}">
                     </div>
 

@@ -33,12 +33,13 @@ class ProductsAdmin extends Controller
     //     return view('admin.products', compact('products'));
     // }
     
-    public function index()
+    public function index(Request $request)
     {
-        // Mengambil semua data dari tabel products menggunakan Query Builder
-        $products = DB::table('products')->get();
+        $query = DB::table('products')->select('id', 'product_name', 'status', 'product_image', 'created_at');
 
-        // Kirim data ke view
+        // Show all products without pagination
+        $products = $query->orderBy('id', 'asc')->get();
+
         return view('admin.products', compact('products'));
     }
     

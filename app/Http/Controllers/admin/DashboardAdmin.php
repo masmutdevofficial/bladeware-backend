@@ -78,11 +78,10 @@ class DashboardAdmin extends Controller
     
     public function exportDashboardExcel(Request $request)
     {
-        $date = $request->input('date');
-        $month = $request->input('month');
         $year = $request->input('year');
-    
-        return Excel::download(new DashboardExport($date, $month, $year), 'dashboard-data.xlsx');
+        $month = $request->input('month');
+
+        return Excel::download(new DashboardExport($year, $month), 'dashboard-data.xlsx');
     }
 
 }

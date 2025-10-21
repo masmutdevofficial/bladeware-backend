@@ -13,12 +13,12 @@
                 <label for="end_date" class="mr-2">To:</label>
                 <input type="date" name="end_date" id="end_date" value="{{ request('end_date') }}" class="form-control mr-2">
             
-                <button type="submit" class="btn btn-primary">Filter</button>
+                <button type="submit" class="btn btn-success text-white">Filter</button>
             </form>
         </div>
         <div class="table-responsive mt-4">
             <table class="table table-bordered table-hover">
-                <thead class="thead-dark">
+                <thead class="bg-success text-white">
                     <tr>
                         <th style="text-align:center;">No</th>
                         <th style="text-align:center;">Information</th>

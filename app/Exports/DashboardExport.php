@@ -13,13 +13,12 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class DashboardExport implements FromView, WithStyles, WithColumnWidths
 {
-    protected $date, $month, $year;
+    protected $year, $month;
 
-    public function __construct($date, $month, $year)
+    public function __construct($year = null, $month = null)
     {
-        $this->date = $date;
-        $this->month = $month;
         $this->year = $year;
+        $this->month = $month; // numeric 1-12
     }
     
     public function styles(Worksheet $sheet)
@@ -49,10 +48,9 @@ class DashboardExport implements FromView, WithStyles, WithColumnWidths
 
     public function view(): View
     {
-        // Filter default
-        $filter_date = $this->date ? Carbon::parse($this->date) : null;
-        $filter_month = $this->month ? Carbon::parse($this->month) : null;
-        $filter_year = $this->year;
+    // Filters: prioritize year -> month
+    $filter_year = $this->year ?: now()->year;
+    $filter_month = $this->month ? (int)$this->month : null; // 1..12
 
         // Query wrapper
         $userQuery = DB::table('users');
@@ -61,30 +59,23 @@ class DashboardExport implements FromView, WithStyles, WithColumnWidths
         $transactionQuery = DB::table('transactions_users');
 
         // Apply filters
-        if ($filter_date) {
-            $userQuery->whereDate('created_at', $filter_date);
-            $depositQuery->whereDate('created_at', $filter_date);
-            $withdrawalQuery->whereDate('created_at', $filter_date);
-            $transactionQuery->whereDate('created_at', $filter_date);
-        }
-
-        if ($filter_month) {
-            $userQuery->whereMonth('created_at', $filter_month->month)
-                      ->whereYear('created_at', $filter_month->year);
-            $depositQuery->whereMonth('created_at', $filter_month->month)
-                         ->whereYear('created_at', $filter_month->year);
-            $withdrawalQuery->whereMonth('created_at', $filter_month->month)
-                            ->whereYear('created_at', $filter_month->year);
-            $transactionQuery->whereMonth('created_at', $filter_month->month)
-                             ->whereYear('created_at', $filter_month->year);
-        }
-
+        // Always constrain by year
         if ($filter_year) {
             $userQuery->whereYear('created_at', $filter_year);
             $depositQuery->whereYear('created_at', $filter_year);
             $withdrawalQuery->whereYear('created_at', $filter_year);
             $transactionQuery->whereYear('created_at', $filter_year);
         }
+
+        // Constrain by month if provided
+        if ($filter_month) {
+            $userQuery->whereMonth('created_at', $filter_month);
+            $depositQuery->whereMonth('created_at', $filter_month);
+            $withdrawalQuery->whereMonth('created_at', $filter_month);
+            $transactionQuery->whereMonth('created_at', $filter_month);
+        }
+
+        // No week filter
 
         // Final counts/sums
         return view('admin.export-dashboard', [
@@ -94,19 +85,9 @@ class DashboardExport implements FromView, WithStyles, WithColumnWidths
             'totalWithdrawals' => (clone $withdrawalQuery)->sum('amount'),
             'totalTransactions' => $transactionQuery->count(),
 
-            'todayUsers' => $filter_date ? DB::table('users')->whereDate('created_at', $filter_date)->count() : 0,
-            'todayDeposits' => $filter_date ? DB::table('deposit_users')->whereDate('created_at', $filter_date)->sum('amount') : 0,
-            'todayWithdrawals' => $filter_date ? DB::table('withdrawal_users')->whereDate('created_at', $filter_date)->sum('amount') : 0,
-            'todayBonus' => $filter_date ? DB::table('deposit_users')->where('category_deposit', 'Bonus')->whereDate('created_at', $filter_date)->sum('amount') : 0,
-
-            'monthlyUsers' => $filter_month ? DB::table('users')->whereMonth('created_at', $filter_month->month)->whereYear('created_at', $filter_month->year)->count() : 0,
-            'monthlyDeposits' => $filter_month ? DB::table('deposit_users')->whereMonth('created_at', $filter_month->month)->whereYear('created_at', $filter_month->year)->sum('amount') : 0,
-            'monthlyWithdrawals' => $filter_month ? DB::table('withdrawal_users')->whereMonth('created_at', $filter_month->month)->whereYear('created_at', $filter_month->year)->sum('amount') : 0,
-            'monthlyBonus' => $filter_month ? DB::table('deposit_users')->where('category_deposit', 'Bonus')->whereMonth('created_at', $filter_month->month)->whereYear('created_at', $filter_month->year)->sum('amount') : 0,
-
-            'filter_date' => $this->date,
-            'filter_month' => $this->month,
-            'filter_year' => $this->year,
+            // For export view informational labels
+            'filter_year' => $filter_year,
+            'filter_month' => $filter_month,
         ]);
     }
 }

@@ -40,9 +40,10 @@
         <th colspan="2" class="header-title">📊 Dashboard Data Export</th>
     </tr>
     <tr class="filter-info">
-        <td>Filter Tanggal</td>
+        <td>Filter</td>
         <td>
-            {{ $filter_date ?? '-' }}
+            Year: {{ $filter_year ?? '-' }}
+            @if(!empty($filter_month)) | Month: {{ $filter_month }} @endif
         </td>
     </tr>
     <tr>

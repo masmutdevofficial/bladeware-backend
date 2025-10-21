@@ -52,17 +52,25 @@ class APIController extends Controller
                 ]);
         }
     
-        // Generate JWT
-        $payload = [
-            'iss' => env('APP_URL'),
-            'sub' => $user->id,
-            'uid' => $user->uid,
-            'iat' => time(),
-            'exp' => time() + (6 * 3600),
-        ];
-    
-        $secretKey = env('JWT_SECRET');
-        $jwt = JWT::encode($payload, $secretKey, 'HS256');
+    $payload = [
+        'iss' => config('app.url'),   // jangan pakai env() di sini juga
+        'sub' => $user->id,
+        'uid' => $user->uid,
+        'iat' => time(),
+        'exp' => time() + (6 * 3600),
+    ];
+
+    $secretKey = config('jwt.secret');
+
+    if (!is_string($secretKey) || $secretKey === '') {
+        Log::error('JWT secret is missing or invalid type');
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Server misconfiguration: JWT secret missing',
+        ], 500);
+    }
+
+    $jwt = JWT::encode($payload, $secretKey, 'HS256');
     
         return response()->json([
             'status' => 'success',
@@ -1407,6 +1415,82 @@ class APIController extends Controller
                 'status' => 'error',
                 'message' => 'Something went wrong',
             ], 500);
+        }
+    }
+
+    // API: get user's combinations grouped by set
+    public function getUserCombinations(Request $request)
+    {
+        $token = $request->header('Authorization');
+        if (!$token) {
+            return response()->json(['status' => 'error', 'message' => 'Token is missing'], 401);
+        }
+
+        try {
+            $secretKey = env('JWT_SECRET');
+            $decoded = JWT::decode(str_replace('Bearer ', '', $token), new Key($secretKey, 'HS256'));
+            $userId = $decoded->sub;
+
+            $rows = DB::table('combination_users')
+                ->where('id_users', $userId)
+                ->orderBy('set_boost')
+                ->orderBy('sequence')
+                ->get();
+
+            $result = [];
+            foreach ($rows as $r) {
+                $result[$r->set_boost][$r->sequence][] = $r->id_produk;
+            }
+
+            return response()->json(['status' => 'success', 'data' => $result]);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => 'Invalid token or unauthorized'], 401);
+        }
+    }
+
+    // API: update user's combinations for a set (replace existing)
+    public function updateUserCombinations(Request $request)
+    {
+        $token = $request->header('Authorization');
+        if (!$token) {
+            return response()->json(['status' => 'error', 'message' => 'Token is missing'], 401);
+        }
+
+        $request->validate([
+            'set_boost' => 'required|integer|in:1,2,3',
+            'combinations' => 'required|array|max:5',
+            'combinations.*.products' => 'required|array|min:1|max:3',
+            'combinations.*.sequence' => 'required|integer|min:0',
+        ]);
+
+        try {
+            $secretKey = env('JWT_SECRET');
+            $decoded = JWT::decode(str_replace('Bearer ', '', $token), new Key($secretKey, 'HS256'));
+            $userId = $decoded->sub;
+
+            // Delete existing combinations for this set
+            DB::table('combination_users')
+                ->where('id_users', $userId)
+                ->where('set_boost', $request->set_boost)
+                ->delete();
+
+            foreach ($request->combinations as $combo) {
+                $seq = max(0, (int)$combo['sequence']);
+                foreach ($combo['products'] as $pid) {
+                    DB::table('combination_users')->insert([
+                        'id_users' => $userId,
+                        'id_produk' => $pid,
+                        'sequence' => $seq,
+                        'set_boost' => $request->set_boost,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            }
+
+            return response()->json(['status' => 'success', 'message' => 'Combinations updated']);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => 'Invalid token or unauthorized'], 401);
         }
     }
 

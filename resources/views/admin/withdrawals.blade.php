@@ -54,9 +54,16 @@
 @endsection
 
 @section('content')
+<style>
+/* Ensure all modal form text is black in withdrawals page */
+.modal-content, .modal-content label, .modal-content .form-control, .modal-content .modal-title {
+    color: #000 !important;
+}
+.modal-content ::placeholder { color: #000 !important; opacity: 1; }
+</style>
 <div class="card p-4">
         <div class="d-flex flex-row justify-content-between align-items-center mb-2">
-            <h5 class="font-bold">Withdrawals Records</h5>
+            <h5 class="font-bold text-black">Withdrawals Records</h5>
         </div>
         <div class="d-flex flex-row justify-between w-100">
             <form method="GET" class="mb-2" style="width:100px;">
@@ -72,13 +79,13 @@
             </form>
             <form method="GET" action="{{ route('admin.withdrawals') }}" class="mb-2 w-100">
                 <div class="input-group">
-                    <input type="text" name="search" class="form-control bg-light border-0 small" placeholder="Search Name..." value="{{ request('search') }}">
+                    <input type="text" name="search" class="form-control bg-light border-0 small text-black" placeholder="Search Name..." value="{{ request('search') }}">
                     <div class="input-group-append">
-                        <button class="btn btn-primary mr-2" type="submit">
-                            <i class="fas fa-search fa-sm"></i>
+                        <button class="btn btn-success mr-2" type="submit">
+                            <i class="fas fa-search text-white fa-sm"></i>
                         </button>
-                        <a href="{{ route('admin.withdrawals') }}" class="btn btn-secondary">
-                            <i class="fas fa-sync-alt fa-sm"></i>
+                        <a href="{{ route('admin.withdrawals') }}" class="btn btn-success">
+                            <i class="fas fa-sync-alt text-white fa-sm"></i>
                         </a>
                     </div>
                 </div>
@@ -87,17 +94,17 @@
         <div class="d-flex flex-row justify-between w-100 mt-4">
             <form method="GET" class="form-inline mb-3">
                 <label for="start_date" class="mr-2">From:</label>
-                <input type="date" name="start_date" id="start_date" value="{{ request('start_date') }}" class="form-control mr-2">
+                <input type="date" name="start_date" id="start_date" value="{{ request('start_date') }}" class="form-control mr-2 text-black">
                 
                 <label for="end_date" class="mr-2">To:</label>
-                <input type="date" name="end_date" id="end_date" value="{{ request('end_date') }}" class="form-control mr-2">
+                <input type="date" name="end_date" id="end_date" value="{{ request('end_date') }}" class="form-control mr-2 text-black">
             
-                <button type="submit" class="btn btn-primary">Filter</button>
+                <button type="submit" class="btn btn-success text-white">Filter</button>
             </form>
         </div>
         <div class="table-responsive mt-4">
             <table class="table table-bordered table-hover">
-                <thead class="thead-dark">
+                <thead class="bg-success text-white">
                     <tr>
                         <th style="text-align:center;">No</th>
                         <th style="text-align:center;">Users</th>
@@ -126,9 +133,9 @@
                             <td><span class="text-black">{{ number_format($withdrawal->amount, 2, ',', '.') }}</span></td>
                             <td>
                                 @if($withdrawal->status == 1)
-                                    <span class="badge badge-success w-100">Approved</span>
+                                    <span class="badge badge-success w-100" style="color:white!important;">Approved</span>
                                 @else
-                                    <span class="badge badge-danger w-100">Rejected</span>
+                                    <span class="badge badge-danger w-100" style="color:white!important;">Rejected</span>
                                 @endif
                             </td>
                             <td><span class="text-black">{{ $withdrawal->created_at }}</span></td>
@@ -292,8 +299,8 @@
                         <input type="hidden" id="deleteItemId" value=""> <!-- Menyimpan ID data yang akan dihapus -->
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
-                        <button type="button" class="btn btn-danger" id="confirmDelete">Hapus</button>
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-danger" id="confirmDelete">Delete</button>
                     </div>
                 </div>
             </div>

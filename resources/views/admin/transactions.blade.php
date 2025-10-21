@@ -35,23 +35,67 @@
 @endsection
 
 @section('content')
+<style>
+/* Ensure all modal form text is black in transactions page */
+.modal-content, .modal-content label, .modal-content .form-control, .modal-content .modal-title {
+    color: #000 !important;
+}
+.modal-content ::placeholder { color: #000 !important; opacity: 1; }
+</style>
 <div class="card p-4">
         <div class="d-flex flex-row justify-content-between align-items-center mb-2">
-            <h5 class="font-bold">Transaction Records</h5>
+            <h5 class="font-bold text-black">Transaction Records</h5>
+        </div>
+        <div class="d-flex flex-row justify-between w-100">
+            <form method="GET" class="mb-2" style="width:100px;">
+                <div class="d-flex align-items-center">
+                    <select name="per_page" id="per_page" class="form-control w-auto" onchange="this.form.submit()">
+                        @foreach([5, 10, 25, 50, 100] as $option)
+                            <option value="{{ $option }}" {{ request('per_page', 10) == $option ? 'selected' : '' }}>
+                                {{ $option }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+            </form>
+            <form method="GET" action="{{ route('admin.transactions') }}" class="mb-2 w-100">
+                <div class="input-group">
+                    <input type="text" name="search" class="form-control bg-light border-0 small text-black" placeholder="Search user or product..." value="{{ request('search') }}">
+                    <div class="input-group-append">
+                        <button class="btn btn-success mr-2" type="submit">
+                            <i class="fas fa-search fa-sm"></i>
+                        </button>
+                        <a href="{{ route('admin.transactions') }}" class="btn btn-success">
+                            <i class="fas fa-sync-alt fa-sm"></i>
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="d-flex flex-row justify-between w-100 mt-2">
+            <form method="GET" action="{{ route('admin.transactions') }}" class="form-inline mb-3">
+                <label for="start_date" class="mr-2">From:</label>
+                <input type="date" name="start_date" id="start_date" value="{{ request('start_date') }}" class="form-control mr-2 text-black">
+                
+                <label for="end_date" class="mr-2">To:</label>
+                <input type="date" name="end_date" id="end_date" value="{{ request('end_date') }}" class="form-control mr-2 text-black">
+            
+                <button type="submit" class="btn btn-success">Filter</button>
+            </form>
         </div>
         <div class="table-responsive mt-4">
             <table class="table table-bordered table-hover">
-                <thead class="thead-dark">
+                <thead class="bg-success text-white">
                     <tr>
-                        <th>No</th>
-                        <th>Name</th>
-                        <th>Image</th>
-                        <th>Product</th>
-                        <th>Price</th>
-                        <th>Profit</th>
-                        <th>Created</th>
-                        <th>Updated</th>
-                        <th>Action</th>
+                        <th style="text-align:center;">No</th>
+                        <th style="text-align:center;">Name</th>
+                        <th style="text-align:center;">Image</th>
+                        <th style="text-align:center;">Product</th>
+                        <th style="text-align:center;">Price</th>
+                        <th style="text-align:center;">Profit</th>
+                        <th style="text-align:center;">Created</th>
+                        <th style="text-align:center;">Updated</th>
+                        <th style="text-align:center;">Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -62,16 +106,16 @@
                     @else
                         @foreach ($transactions as $key => $transaction)
                             <tr>
-                                <td>{{ $key + 1 }}</td>
-                                <td>{{ $transaction->user_name }}</td>
+                                <td><span class="text-black">{{ $key + 1 }}</span></td>
+                                <td><span class="text-black">{{ $transaction->user_name }}</span></td>
                                 <td>
                                     <img src="{{ asset('storage/' . $transaction->product_image) }}" alt="Product Image" width="80">
                                 </td>
-                                <td>{{ $transaction->product_name }}</td>
-                                <td>{{ number_format($transaction->price, 2, ',', '.') }}</td>
-                                <td>{{ number_format($transaction->profit, 2, ',', '.') }}</td>
-                                <td>{{ $transaction->created_at }}</td>
-                                <td>{{ $transaction->updated_at }}</td>
+                                <td><span class="text-black">{{ $transaction->product_name }}</span></td>
+                                <td><span class="text-black">{{ number_format($transaction->price, 2, ',', '.') }}</span></td>
+                                <td><span class="text-black">{{ number_format($transaction->profit, 2, ',', '.') }}</span></td>
+                                <td><span class="text-black">{{ $transaction->created_at }}</span></td>
+                                <td><span class="text-black">{{ $transaction->updated_at }}</span></td>
                                 <td>
                                     <div class="d-flex flex-row justify-content-center align-items-center">
                                         <!-- Tombol Delete -->
@@ -86,6 +130,11 @@
                     @endif
                 </tbody>
             </table>
+            @if(method_exists($transactions, 'links'))
+            <div class="mt-3 d-flex justify-content-center align-items-center">
+                {{ $transactions->links('pagination::bootstrap-4') }}
+            </div>
+            @endif
         </div>
 
         <!-- Modal Confirm Delete -->
@@ -101,8 +150,8 @@
                         <input type="hidden" id="deleteItemId" value=""> <!-- Menyimpan ID data yang akan dihapus -->
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
-                        <button type="button" class="btn btn-danger" id="confirmDelete">Hapus</button>
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-danger" id="confirmDelete">Delete</button>
                     </div>
                 </div>
             </div>

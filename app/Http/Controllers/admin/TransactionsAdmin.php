@@ -10,10 +10,10 @@ use Illuminate\Support\Facades\Storage;
 
 class TransactionsAdmin extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         // Ambil data transaksi dengan JOIN ke tabel users dan products
-        $transactions = DB::table('transactions_users')
+        $query = DB::table('transactions_users')
             ->join('users', 'transactions_users.id_users', '=', 'users.id') // Join dengan users
             ->join('products', 'transactions_users.id_products', '=', 'products.id') // Join dengan products
             ->select(
@@ -23,8 +23,27 @@ class TransactionsAdmin extends Controller
                 'products.product_image',
                 'products.price',
                 'products.profit'
-            )
-            ->get();
+            );
+
+        // Search by user name or product name
+        if ($request->has('search') && $request->search !== null) {
+            $keyword = '%' . $request->search . '%';
+            $query->where(function ($q) use ($keyword) {
+                $q->where('users.name', 'like', $keyword)
+                  ->orWhere('products.product_name', 'like', $keyword);
+            });
+        }
+
+        // Date range filter
+        if ($request->has(['start_date', 'end_date']) && $request->start_date && $request->end_date) {
+            $query->whereBetween('transactions_users.created_at', [
+                $request->start_date . ' 00:00:00',
+                $request->end_date . ' 23:59:59'
+            ]);
+        }
+
+        $perPage = $request->input('per_page', 10);
+        $transactions = $query->orderBy('transactions_users.created_at', 'desc')->paginate($perPage)->withQueryString();
 
         // Kirim data ke view
         return view('admin.transactions', compact('transactions'));

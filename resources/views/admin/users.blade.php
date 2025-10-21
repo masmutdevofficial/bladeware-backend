@@ -35,7 +35,7 @@
                 if (!$select.hasClass("select2-hidden-accessible")) {
                     if (typeof $select.select2 === 'function') {
                         $select.select2({
-                            placeholder: "Pilih produk...",
+                            placeholder: "Select products...",
                             maximumSelectionLength: 3,
                             width: '100%'
                         });
@@ -94,39 +94,8 @@
     });
 </script>
 @endsection
-
 @section('content')
-<style>
-    .text-sm {
-        font-size:12px!important;
-    }
-</style>
-
-<div class="card p-4">
-        <div class="d-flex flex-row justify-content-between align-items-center mb-4">
-            <h5 class="font-bold">Users Records</h5>
-            @if(Auth::user()->level == 0)
-                <div class="d-flex flex-row justify-content-between align-items-center">
-                    <button class="btn btn-primary mr-2" data-toggle="modal" data-target="#addUserModal">
-                        <i class="fa fa-plus mr-2"></i>
-                        Add Users
-                    </button>
-                    <div class="dropdown mr-2">
-                        <button class="btn btn-secondary dropdown-toggle" type="button" id="exportDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            <i class="fa fa-download mr-2"></i> Export
-                        </button>
-                        <div class="dropdown-menu" aria-labelledby="exportDropdown">
-                            <a class="dropdown-item" href="{{ route('admin.export-excel') }}">
-                                <i class="fa fa-file-excel mr-2 text-success"></i> Excel
-                            </a>
-                            <a class="dropdown-item" href="{{ route('admin.export-pdf') }}">
-                                <i class="fa fa-file-pdf mr-2 text-danger"></i> PDF
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            @endif
-        </div>
+<div class="card p-4">        
         <div class="d-flex flex-row justify-between w-100">
             <form method="GET" class="mb-2" style="width:100px;">
                 <div class="d-flex align-items-center">
@@ -141,22 +110,33 @@
             </form>
             <form method="GET" action="{{ route('admin.users') }}" class="mb-2 w-100">
                 <div class="input-group">
-                    <input type="text" name="search" class="form-control bg-light border-0 small" placeholder="Search name, email, referral..." value="{{ request('search') }}">
+                    <input type="text" name="search" class="form-control bg-light border-0 small text-black" placeholder="Search name, email, referral..." value="{{ request('search') }}">
                     <div class="input-group-append">
-                        <button class="btn btn-primary mr-2" type="submit">
-                            <i class="fas fa-search fa-sm"></i>
+                        <button class="btn btn-success text-white mr-2" type="submit">
+                            <i class="fas fa-search text-white fa-sm"></i>
                         </button>
-                        <a href="{{ route('admin.users') }}" class="btn btn-secondary">
-                            <i class="fas fa-sync-alt fa-sm"></i>
+                        <a href="{{ route('admin.users') }}" class="btn btn-success text-white">
+                            <i class="fas fa-sync-alt text-white fa-sm"></i>
                         </a>
                     </div>
                 </div>
             </form>
         </div>
+        <div class="d-flex flex-row justify-between w-100 mt-2">
+            <form method="GET" action="{{ route('admin.users') }}" class="form-inline mb-3">
+                <label for="start_date" class="mr-2">From:</label>
+                <input type="date" name="start_date" id="start_date" value="{{ request('start_date') }}" class="form-control mr-2 text-black">
+                
+                <label for="end_date" class="mr-2">To:</label>
+                <input type="date" name="end_date" id="end_date" value="{{ request('end_date') }}" class="form-control mr-2 text-black">
+            
+                <button type="submit" class="btn btn-success text-white">Filter</button>
+            </form>
+        </div>
 
         <div class="table-responsive mt-4">
             <table class="table table-bordered table-hover">
-                <thead class="thead-dark">
+                <thead class="bg-success text-white">
                     <tr>
                         <th class="text-center">No</th>
                         <th class="text-center">Users Detail</th>
@@ -187,11 +167,11 @@
                                 {{ $no++ }}
                             </td>
                             <td>
-                                <div class="d-flex flex-column flex-wrap gap-2 text-sm" style="width:220px;">
+                                <div class="d-flex flex-column flex-wrap gap-2 text-sm" style="width:300px;">
                                     @if(Auth::user()->level == 0)
                                     <div class="d-flex justify-content-end mb-1">
-                                        <a href="#" class="btn btn-transparent btn-sm" data-toggle="modal" data-target="#editModalData-{{ $user->id }}">
-                                            <i class="fa fa-edit text-warning"></i>
+                                        <a href="#" class="btn btn-warning btn-sm" data-toggle="modal" data-target="#editModalData-{{ $user->id }}">
+                                            <i class="fa fa-edit text-black"></i>
                                         </a>
                                     </div>
                                     @endif
@@ -214,25 +194,25 @@
                             <td>
                                     @if(Auth::user()->level == 0)
                                     <div class="d-flex justify-content-end mb-1">
-                                        <a href="#" class="btn btn-transparent btn-sm" data-toggle="modal" data-target="#editModalFinance-{{ $user->id }}">
+                                        <a href="#" class="btn btn-warning btn-sm" data-toggle="modal" data-target="#editModalFinance-{{ $user->id }}">
                                             <i class="fa fa-edit text-warning"></i>
                                         </a>
                                     </div>
                                     @endif
                                     <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-sm text-black" style="width:200px;">
-                                        <strong class="me-1">Recharge Time:</strong>
+                                        <strong class="me-1">Recharge Times:</strong>
                                         {{ $user->deposit_count > 0 ? $user->deposit_count . ' times' : 'N/A' }}
                                     </div>
-                                    <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-sm text-black">
+                                    <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-sm text-black" style="width:200px;">
                                         <strong class="me-1">Recharge Amount:</strong>
                                         {{ $user->deposit_total > 0 ? number_format($user->deposit_total) : 'N/A' }}
                                     </div>
                                     <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-sm text-black" style="width:200px;">
-                                        <strong class="me-1">Number Of Withdrawn:</strong>
+                                        <strong class="me-1">Withdrawal Times:</strong>
                                         {{ $user->withdrawal_count > 0 ? $user->withdrawal_count . ' times' : 'N/A' }}
                                     </div>
-                                    <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-sm text-black">
-                                        <strong class="me-1">Cash Withdrawn:</strong>
+                                    <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-sm text-black" style="width:200px;">
+                                        <strong class="me-1">Withdrawal Amount:</strong>
                                         {{ $user->withdrawal_total > 0 ? number_format($user->withdrawal_total) : 'N/A' }}
                                     </div>
                             </td>
@@ -242,18 +222,22 @@
                                         <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-danger">
                                             <strong class="me-1 text-danger">Order Boost:</strong>{{ $user->task_done }}/{{ $user->task_limit }}
                                         </div>
+                                        @php
+                                            $ids = $user->display_combination_products ?? [];
+                                            $idsStr = empty($ids) ? '-' : implode(', ', $ids);
+                                        @endphp
                                         <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-danger">
-                                            <strong class="me-1 text-danger">COMBINATION DATA:</strong>
-                                            @if (!empty($user->combination_product))
-                                                {{ implode(', ', array_unique($user->combination_product)) }}
-                                            @endif
+                                            <strong class="me-1 text-danger">Combination:</strong> {{ $idsStr }}
                                         </div>
-                                        @if ($user->combination_data)
-                                            <div class="d-flex justify-content-end align-items-end flex-row mb-1 text-danger">
-                                                Order : {{ $user->combination_data->sequence + 1 }}
-                                            </div>
-                                            <div class="d-flex justify-content-end align-items-end flex-row mb-1 text-danger">
-                                                Set : {{ $user->combination_data->set_boost }}
+                                        <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-danger">
+                                            <strong class="me-1 text-danger">Order:</strong> {{ $user->display_sequence ?? '-' }}
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-danger">
+                                            <strong class="me-1 text-danger">Set:</strong> {{ $user->display_set ?? '-' }}
+                                        </div>
+                                        @if($user->is_combination_active)
+                                            <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-danger">
+                                                <strong class="me-1 text-danger">Status:</strong> Currently processing combination order
                                             </div>
                                         @endif
                                     @else
@@ -267,7 +251,7 @@
                                 </div>
                             </td>
                             <td>
-                                <div class="d-flex flex-column flex-wrap gap-2 text-sm" style="width:240px;padding-top: 34.5px;">
+                                <div class="d-flex flex-column flex-wrap gap-2 text-sm" style="width:340px;padding-top: 34.5px;">
                                     <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-black"><strong class="me-1">Registration Time:</strong> {{ $user->created_at ?? 'N/A' }}</div>
                                     <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-black"><strong class="me-1">Up Time:</strong> {{ $user->finance->updated_at ?? 'N/A' }}</div>
                                     <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-black"><strong class="me-1">IP Address:</strong> {{ $user->ip_address ?? '-' }}</div>
@@ -290,7 +274,7 @@
                             <td>
                                 @if(Auth::user()->level == 0)
                                 <div class="d-flex justify-content-center">
-                                    <a href="#" class="btn btn-primary mr-2" data-toggle="modal" data-target="#boostModal-{{ $user->id }}">
+                                    <a href="{{ route('admin.users.combinations', ['id' => $user->id]) }}" class="btn btn-primary mr-2">
                                         <i class="fa fa-cogs"></i>
                                     </a>
                                     <a href="#" class="btn btn-danger" data-toggle="modal" data-target="#confirmDeleteModal-{{ $user->id }}">
@@ -303,7 +287,7 @@
                                         <form action="{{ url('/admin/reset-job') }}" method="POST" class="d-inline">
                                             @csrf
                                             <input type="hidden" name="id" value="{{ $user->id }}">
-                                            <button type="submit" class="btn btn-success mr-2">
+                                            <button type="submit" class="btn btn-success text-white mr-2">
                                                 Reset ({{ $user->task_done }}/{{ $user->task_limit }})
                                             </button>
                                         </form>
@@ -581,70 +565,7 @@
                             </div>
                         </div>
 
-                        <!-- Modal Edit Boost -->
-                        <div class="modal fade" id="boostModal-{{ $user->id }}" tabindex="-1" role="dialog">
-                            <div class="modal-dialog" role="document">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h5 class="modal-title">Setting Combination Products</h5>
-                                        <button type="button" class="close" data-dismiss="modal">&times;</button>
-                                    </div>
-                                    <div class="modal-body">
-                                        <form action="{{ route('admin.edit-boost-user', ['id' => $user->id]) }}" method="POST">
-                                            @csrf
-                                            
-                                            <div class="form-group">
-                                                <label>Status</label><br>
-                                                <div class="form-check form-check-inline">
-                                                    <input class="form-check-input status-radio" type="radio" name="status" id="active{{ $user->id }}" value="active"
-                                                        {{ !empty($user->combination_product) ? 'checked' : '' }}>
-                                                    <label class="form-check-label" for="active{{ $user->id }}">Active</label>
-                                                </div>
-                                                <div class="form-check form-check-inline">
-                                                    <input class="form-check-input status-radio" type="radio" name="status" id="inactive{{ $user->id }}" value="inactive"
-                                                        {{ empty($user->combination_product) ? 'checked' : '' }}>
-                                                    <label class="form-check-label" for="inactive{{ $user->id }}">Inactive</label>
-                                                </div>
-                                            </div>
-                                        
-                                            <div class="form-group d-none" id="product-select-group">
-                                                <label>Select Combination Products (max 3)</label>
-                                                <select class="form-control product-multiselect" name="products[]" id="product-multiselect-{{ $user->id }}" multiple required>
-                                                    @foreach($products as $product)
-                                                        <option value="{{ $product->id }}"
-                                                            @if(in_array($product->id, $user->combination_product ?? [])) selected @endif
-                                                        >
-                                                            {{ $product->id }}
-                                                        </option>
-                                                    @endforeach
-                                                </select>
-                                            </div>
-                                            
-                                            <div class="form-group d-none" id="boost-sequence-group">
-                                                <label>After:</label>
-                                                <input type="number" name="sequence"
-                                                       value="{{ optional($user->combination->first())->sequence }}"
-                                                       class="form-control" required>
-                                            </div>
-                                            
-                                            <div class="form-group d-none" id="boost-set-group">
-                                                <label>Show On Set:</label>
-                                                @php
-                                                    $setBoost = optional($user->combination->first())->set_boost;
-                                                @endphp
-                                                <select class="form-control" name="set_boost" required>
-                                                    <option value="1" {{ $setBoost == 1 ? 'selected' : '' }}>Set 1</option>
-                                                    <option value="2" {{ $setBoost == 2 ? 'selected' : '' }}>Set 2</option>
-                                                    <option value="3" {{ $setBoost == 3 ? 'selected' : '' }}>Set 3</option>
-                                                </select>
-                                            </div>
-                                            
-                                            <button type="submit" class="btn btn-primary">Save Changes</button>
-                                        </form>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        
                         @endif
                     @endforeach
                     @endif

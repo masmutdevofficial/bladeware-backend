@@ -17,9 +17,9 @@
         $('#editForm').attr('action', formAction);
     
         // Tampilkan gambar preview
-        if (product.image) {
+        if (product.product_image) {
             $('#preview_edit_image')
-                .attr('src', '/uploads/products/' + product.image)
+                .attr('src', '/uploads/products/' + product.product_image)
                 .removeClass('d-none');
         } else {
             $('#preview_edit_image').addClass('d-none');
@@ -73,46 +73,28 @@
 @endsection
 
 @section('content')
+<style>
+/* Ensure all modal form text is black in products page */
+.modal-content, .modal-content label, .modal-content .form-control, .modal-content .modal-title {
+    color: #000 !important;
+}
+.modal-content ::placeholder { color: #000 !important; opacity: 1; }
+</style>
 <div class="card p-4">
         <div class="d-flex flex-row justify-content-between align-items-center mb-2">
-            <h5 class="font-bold">Products Records</h5>
+            <h5 class="font-bold text-black">Products Records</h5>
             @if(Auth::user()->level == 0)
             <!-- Button untuk Membuka Modal -->
-            <button class="btn btn-primary" data-toggle="modal" data-target="#addProductModal">
-                <i class="fa fa-plus mr-2"></i>
+            <button class="btn btn-success text-white" data-toggle="modal" data-target="#addProductModal">
+                <i class="fa fa-plus text-white mr-2"></i>
                 Add Products
             </button>
             @endif
         </div>
-        <!--<div class="d-flex flex-row justify-between w-100">-->
-        <!--    <form method="GET" class="mb-2" style="width:100px;">-->
-        <!--        <div class="d-flex align-items-center">-->
-        <!--            <select name="per_page" id="per_page" class="form-control w-auto" onchange="this.form.submit()">-->
-        <!--                @foreach([5, 10, 25, 50, 100] as $option)-->
-        <!--                    <option value="{{ $option }}" {{ request('per_page', 5) == $option ? 'selected' : '' }}>-->
-        <!--                        {{ $option }}-->
-        <!--                    </option>-->
-        <!--                @endforeach-->
-        <!--            </select>-->
-        <!--        </div>-->
-        <!--    </form>-->
-        <!--    <form method="GET" action="{{ route('admin.products') }}" class="mb-2 w-100">-->
-        <!--        <div class="input-group">-->
-        <!--            <input type="text" name="search" class="form-control bg-light border-0 small" placeholder="Search Product ID..." value="{{ request('search') }}">-->
-        <!--            <div class="input-group-append">-->
-        <!--                <button class="btn btn-primary mr-2" type="submit">-->
-        <!--                    <i class="fas fa-search fa-sm"></i>-->
-        <!--                </button>-->
-        <!--                <a href="{{ route('admin.products') }}" class="btn btn-secondary">-->
-        <!--                    <i class="fas fa-sync-alt fa-sm"></i>-->
-        <!--                </a>-->
-        <!--            </div>-->
-        <!--        </div>-->
-        <!--    </form>-->
-        <!--</div>-->
+        
         <div class="table-responsive mt-4">
-            <table class="table table-bordered table-hover">
-                <thead class="thead-dark">
+            <table class="table table-bordered table-hover text-center align-middle">
+                <thead class="bg-success text-white">
                     <tr>
                         <th style="text-align:center;">ID</th>
                         <th style="text-align:center;">Product Image</th>
@@ -129,21 +111,21 @@
                     @else
                         @foreach ($products as $product)
                         <tr>
-                            <td>{{ $product->id }}</td>
+                            <td class="text-center">{{ $product->id }}</td>
                             <!-- Kolom Gambar -->
-                            <td>
+                            <td class="text-center">
                                 @if($product->product_image)
                                     <img src="{{ asset('uploads/products/' . $product->product_image) }}" alt="Product Image" width="80" class="img-thumbnail">
                                 @else
-                                    <span class="text-muted">No Image</span>
+                                    <span class="text-black">No Image</span>
                                 @endif
                             </td>
-                            <td><span class="text-black">{{ $product->product_name }}</span></td>
-                            <td>
+                            <td class="text-center"><span class="text-black">{{ $product->product_name }}</span></td>
+                            <td class="text-center">
                                 @if($product->status == 1)
-                                    <span class="badge badge-success w-100">Active</span>
+                                    <span class="badge badge-success w-100" style="color:white!important;">Active</span>
                                 @else
-                                    <span class="badge badge-danger w-100">NonActive</span>
+                                    <span class="badge badge-danger w-100" style="color:white!important;">Inactive</span>
                                 @endif
                             </td>
                             <td>
@@ -181,6 +163,7 @@
                 </tbody>
             </table>
         </div>
+        
 
         @if(Auth::user()->level == 0)
         <!-- Add Modal -->
@@ -214,13 +197,13 @@
                                 <label for="status">Status</label>
                                 <select class="form-control" id="status" name="status">
                                     <option value="1">Active</option>
-                                    <option value="0">NonActive</option>
+                                    <option value="0">Inactive</option>
                                 </select>
                             </div>
 
                             <div class="modal-footer">
                                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                                <button type="submit" class="btn btn-primary">Save Product</button>
+                                <button type="submit" class="btn btn-success">Save Product</button>
                             </div>
                         </form>
                     </div>
@@ -263,14 +246,14 @@
                                 <label for="edit_status">Status</label>
                                 <select class="form-control" id="edit_status" name="status">
                                     <option value="1">Active</option>
-                                    <option value="0">NonActive</option>
+                                    <option value="0">Inactive</option>
                                 </select>
                             </div>
                         </div>
 
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                            <button type="submit" class="btn btn-primary">Update Product</button>
+                            <button type="submit" class="btn btn-success">Update Product</button>
                         </div>
                     </form>
                 </div>
@@ -290,8 +273,8 @@
                         <input type="hidden" id="deleteItemId" value=""> <!-- Menyimpan ID data yang akan dihapus -->
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
-                        <button type="button" class="btn btn-danger" id="confirmDelete">Hapus</button>
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-danger" id="confirmDelete">Delete</button>
                     </div>
                 </div>
             </div>

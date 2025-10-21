@@ -42,17 +42,17 @@
                     {{ $no++ }}
                 </td>
                 <td>
-                    Nama: {{ $user->name }}<br>
+                    Name: {{ $user->name }}<br>
                     Phone/Email: {{ $user->phone_email }}<br>
                     VIP: {{ $user->membership }}<br>
-                    Invitation: {{ $user->referral }}<br>
-                    Upline: {{ $user->upline_name ?? '-' }}
+                    Invitation Code: {{ $user->referral }}<br>
+                    Superior Username: {{ $user->upline_name ?? '-' }}
                 </td>
                 <td>
-                    Saldo: {{ number_format($user->finance->saldo ?? 0, 2, '.', '') }}<br>
-                    Beku: {{ number_format($user->finance->saldo_beku ?? 0, 2, '.', '') }}<br>
-                    Komisi Misi: {{ number_format($user->finance->saldo_misi ?? 0, 2, '.', '') }}<br>
-                    Komisi Referral: {{ number_format($user->finance->komisi ?? 0, 2, '.', '') }}
+                    Available Balance: {{ number_format($user->finance->saldo ?? 0, 2, '.', '') }}<br>
+                    Frozen Balance: {{ number_format($user->finance->saldo_beku ?? 0, 2, '.', '') }}<br>
+                    Mission Commission: {{ number_format($user->finance->saldo_misi ?? 0, 2, '.', '') }}<br>
+                    Superior Commission: {{ number_format($user->finance->komisi ?? 0, 2, '.', '') }}
                 </td>
                 <td>
                     Recharge: {{ $user->deposit_count ?? 0 }} times<br>

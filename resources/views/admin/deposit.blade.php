@@ -60,9 +60,16 @@
 @endsection
 
 @section('content')
+<style>
+/* Ensure all modal form text is black in deposit page */
+.modal-content, .modal-content label, .modal-content .form-control, .modal-content .modal-title {
+    color: #000 !important;
+}
+.modal-content ::placeholder { color: #000 !important; opacity: 1; }
+</style>
 <div class="card p-4">
         <div class="d-flex flex-row justify-content-between align-items-center mb-2">
-            <h5 class="font-bold">Deposit Records</h5>
+            <h5 class="font-bold text-black">Deposit Records</h5>
         </div>
         <div class="d-flex flex-row justify-between w-100">
             <form method="GET" class="mb-2" style="width:100px;">
@@ -78,13 +85,13 @@
             </form>
             <form method="GET" action="{{ route('admin.deposits') }}" class="mb-2 w-100">
                 <div class="input-group">
-                    <input type="text" name="search" class="form-control bg-light border-0 small" placeholder="Search Name..." value="{{ request('search') }}">
+                    <input type="text" name="search" class="form-control bg-light border-0 small text-black" placeholder="Search Name..." value="{{ request('search') }}">
                     <div class="input-group-append">
-                        <button class="btn btn-primary mr-2" type="submit">
-                            <i class="fas fa-search fa-sm"></i>
+                        <button class="btn btn-success text-white mr-2" type="submit">
+                            <i class="fas fa-search fa-sm text-white"></i>
                         </button>
-                        <a href="{{ route('admin.deposits') }}" class="btn btn-secondary">
-                            <i class="fas fa-sync-alt fa-sm"></i>
+                        <a href="{{ route('admin.deposits') }}" class="btn btn-success text-white">
+                            <i class="fas fa-sync-alt fa-sm text-white"></i>
                         </a>
                     </div>
                 </div>
@@ -93,17 +100,17 @@
         <div class="d-flex flex-row justify-between w-100 mt-4">
             <form method="GET" class="form-inline mb-3">
                 <label for="start_date" class="mr-2">From:</label>
-                <input type="date" name="start_date" id="start_date" value="{{ request('start_date') }}" class="form-control mr-2">
+                <input type="date" name="start_date" id="start_date" value="{{ request('start_date') }}" class="form-control mr-2 text-black">
                 
                 <label for="end_date" class="mr-2">To:</label>
-                <input type="date" name="end_date" id="end_date" value="{{ request('end_date') }}" class="form-control mr-2">
+                <input type="date" name="end_date" id="end_date" value="{{ request('end_date') }}" class="form-control mr-2 text-black">
             
-                <button type="submit" class="btn btn-primary">Filter</button>
+                <button type="submit" class="btn btn-success text-white">Filter</button>
             </form>
         </div>
         <div class="table-responsive mt-4">
             <table class="table table-bordered table-hover">
-                <thead class="thead-dark">
+                <thead class="bg-success text-white">
                     <tr>
                         <th style="text-align:center;">No</th>
                         <th style="text-align:center;">Users</th>
@@ -125,13 +132,13 @@
 
                             <td><span class="text-black">{{ $deposit->name }}</span></td>
                             <td><span class="text-black">{{ number_format($deposit->amount, 2, ',', '.') }}</span></td>
-                            <td><span class="text-black">{{ $deposit->category_deposit }}</span></td>
+                            <td><span class="text-black">{{ $deposit->category_deposit == 'Bonus' ? 'Rewards' : $deposit->category_deposit }}</span></td>
                             <td>
                                 <div class="d-flex flex-column justify-content-center align-items-center">
                                 @if($deposit->status == 1)
-                                    <span class="badge badge-success" style="width:150px;">Succeed</span>
+                                    <span class="badge badge-success" style="width:120px;color:white!important;">Succeed</span>
                                 @else
-                                    <span class="badge badge-danger" style="width:150px;">Rejected</span>
+                                    <span class="badge badge-danger" style="width:120px;color:white!important;">Rejected</span>
                                 @endif
                                 </div>
                             </td>
@@ -220,7 +227,7 @@
                                 <select class="form-control" id="currency" name="category_deposit" required>
                                     <option value="" selected>Choose Deposit Type</option>
                                     <option value="Deposit">Deposit</option>
-                                    <option value="Bonus">Bonus</option>
+                                    <option value="Bonus">Rewards</option>
                                 </select>
                             </div>
                             
@@ -293,7 +300,7 @@
                                 <select class="form-control" id="edit_jenis" name="category_deposit" required>
                                     <option value="">Choose Deposit Type</option>
                                     <option value="Deposit">Deposit</option>
-                                    <option value="Bonus">Bonus</option>
+                                    <option value="Bonus">Rewards</option>
                                 </select>
                             </div>
                             
@@ -337,8 +344,8 @@
                         <input type="hidden" id="deleteItemId" value=""> <!-- Menyimpan ID data yang akan dihapus -->
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
-                        <button type="button" class="btn btn-danger" id="confirmDelete">Hapus</button>
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-danger" id="confirmDelete">Delete</button>
                     </div>
                 </div>
             </div>

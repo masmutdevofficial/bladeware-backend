@@ -29,6 +29,12 @@ Route::middleware(['cekLogin'])->group(function () {
     Route::post('/admin/edit-finance-user/{id}', [UsersAdmin::class, 'editFinanceUser'])->name('admin.edit-finance-user');
     Route::post('/admin/edit-wallet-user/{id}', [UsersAdmin::class, 'editWalletUser'])->name('admin.edit-wallet-user');
     Route::post('/admin/edit-boost-user/{id}', [UsersAdmin::class, 'editBoostUser'])->name('admin.edit-boost-user');
+    // Combination settings page (separate page)
+    Route::get('/admin/users/{id}/combinations', [UsersAdmin::class, 'showCombinations'])->name('admin.users.combinations');
+    Route::post('/admin/users/{id}/combinations', [UsersAdmin::class, 'saveCombinations'])->name('admin.save-combinations');
+    Route::post('/admin/users/{id}/combinations/add', [UsersAdmin::class, 'addCombination'])->name('admin.add-combination');
+    Route::post('/admin/users/{id}/combinations/delete', [UsersAdmin::class, 'deleteCombination'])->name('admin.delete-combination');
+    Route::post('/admin/users/{id}/combinations/update', [UsersAdmin::class, 'updateCombination'])->name('admin.update-combination');
     Route::get('/admin/users/export/excel', [UsersAdmin::class, 'exportUsersExcel'])->name('admin.export-excel');
     Route::get('/admin/users/export/pdf', [UsersAdmin::class, 'exportUsersPdf'])->name('admin.export-pdf');
 
