@@ -198,7 +198,7 @@ class APIController extends Controller
     
         try {
             // Decode token
-            $secretKey = env('JWT_SECRET');
+            $secretKey = config('jwt.secret');
             $decoded = JWT::decode(str_replace('Bearer ', '', $token), new Key($secretKey, 'HS256'));
     
             // Ambil uid dari payload
@@ -252,7 +252,7 @@ class APIController extends Controller
         }
     
         try {
-            $secretKey = env('JWT_SECRET');
+            $secretKey = config('jwt.secret');
             $decoded = JWT::decode(str_replace('Bearer ', '', $token), new Key($secretKey, 'HS256'));
             $uid = $decoded->uid;
     
@@ -312,7 +312,7 @@ class APIController extends Controller
         }
     
         try {
-            $secretKey = env('JWT_SECRET');
+            $secretKey = config('jwt.secret');
             $decoded = JWT::decode(str_replace('Bearer ', '', $token), new Key($secretKey, 'HS256'));
             $uid = $decoded->uid;
     
@@ -373,7 +373,7 @@ class APIController extends Controller
         }
     
         try {
-            $secretKey = env('JWT_SECRET');
+            $secretKey = config('jwt.secret');
             $decoded = JWT::decode(str_replace('Bearer ', '', $jwtToken), new Key($secretKey, 'HS256'));
             $userId = $decoded->sub;
         } catch (\Exception $e) {
@@ -412,7 +412,7 @@ class APIController extends Controller
     
         try {
             // Decode token
-            $secretKey = env('JWT_SECRET');
+            $secretKey = config('jwt.secret');
             $decoded = JWT::decode(str_replace('Bearer ', '', $token), new Key($secretKey, 'HS256'));
     
             // Ambil uid dari payload
@@ -487,7 +487,7 @@ class APIController extends Controller
         }
     
         try {
-            $secretKey = env('JWT_SECRET');
+            $secretKey = config('jwt.secret');
             $decoded = JWT::decode(str_replace('Bearer ', '', $jwtToken), new Key($secretKey, 'HS256'));
             $userId = $decoded->sub;
         } catch (\Exception $e) {
@@ -552,7 +552,7 @@ class APIController extends Controller
         }
     
         try {
-            $secretKey = env('JWT_SECRET');
+            $secretKey = config('jwt.secret');
             $decoded = JWT::decode(str_replace('Bearer ', '', $jwtToken), new Key($secretKey, 'HS256'));
             $userId = $decoded->sub;
         } catch (\Exception $e) {
@@ -596,7 +596,7 @@ class APIController extends Controller
         }
     
         try {
-            $secretKey = env('JWT_SECRET');
+            $secretKey = config('jwt.secret');
             $decoded = JWT::decode(str_replace('Bearer ', '', $jwtToken), new Key($secretKey, 'HS256'));
             $userId = $decoded->sub;
         } catch (\Exception $e) {
@@ -631,7 +631,7 @@ class APIController extends Controller
         }
     
         try {
-            $secretKey = env('JWT_SECRET');
+            $secretKey = config('jwt.secret');
             $decoded = JWT::decode(str_replace('Bearer ', '', $token), new Key($secretKey, 'HS256'));
             $userId = $decoded->sub;
     
@@ -733,7 +733,7 @@ class APIController extends Controller
         }
     
         try {
-            $secretKey = env('JWT_SECRET');
+            $secretKey = config('jwt.secret');
             $decoded = JWT::decode(str_replace('Bearer ', '', $token), new Key($secretKey, 'HS256'));
             $userId = $decoded->sub;
     
@@ -776,7 +776,7 @@ class APIController extends Controller
         }
     
         try {
-            $secretKey = env('JWT_SECRET');
+            $secretKey = config('jwt.secret');
             $decoded = JWT::decode(str_replace('Bearer ', '', $token), new Key($secretKey, 'HS256'));
             $userId = $decoded->sub;
     
@@ -1155,7 +1155,7 @@ class APIController extends Controller
         }
     
         try {
-            $secretKey = env('JWT_SECRET');
+            $secretKey = config('jwt.secret');
             $decoded = JWT::decode(str_replace('Bearer ', '', $token), new Key($secretKey, 'HS256'));
             $userId = $decoded->sub;
     
@@ -1334,7 +1334,7 @@ class APIController extends Controller
         }
     
         try {
-            $secretKey = env('JWT_SECRET');
+            $secretKey = config('jwt.secret');
             $decoded = JWT::decode(str_replace('Bearer ', '', $token), new Key($secretKey, 'HS256'));
             $userId = $decoded->sub;
     
@@ -1427,7 +1427,7 @@ class APIController extends Controller
         }
 
         try {
-            $secretKey = env('JWT_SECRET');
+            $secretKey = config('jwt.secret');
             $decoded = JWT::decode(str_replace('Bearer ', '', $token), new Key($secretKey, 'HS256'));
             $userId = $decoded->sub;
 
@@ -1464,7 +1464,7 @@ class APIController extends Controller
         ]);
 
         try {
-            $secretKey = env('JWT_SECRET');
+            $secretKey = config('jwt.secret');
             $decoded = JWT::decode(str_replace('Bearer ', '', $token), new Key($secretKey, 'HS256'));
             $userId = $decoded->sub;
 
