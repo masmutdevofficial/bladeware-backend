@@ -844,12 +844,32 @@ class APIController extends Controller
     
             $sisaTugas = $limitMap[$membership] ?? 0;
     
-            $tugasSelesai = DB::table('transactions_users')
+            // Hitung tugas selesai: deret 'combination' berurutan dihitung 1
+            $types = DB::table('transactions_users')
                 ->where('id_users', $userId)
                 ->where('set', $positionSet)
                 ->where('status', 0)
                 ->whereDate('created_at', $today)
-                ->count();
+                ->orderBy('urutan')       // jaga urutan grup
+                ->orderBy('created_at')   // fallback urutan waktu
+                ->orderBy('id')           // penentu terakhir agar stabil
+                ->pluck('type');
+
+            $tugasSelesai = 0;
+            $prev = null;
+
+            foreach ($types as $type) {
+                if ($type === 'combination') {
+                    // hanya tambah saat awal deret combination
+                    if ($prev !== 'combination') {
+                        $tugasSelesai++;
+                    }
+                } else {
+                    // selain combination selalu dihitung 1
+                    $tugasSelesai++;
+                }
+                $prev = $type;
+            }
     
             $tugasSekarang = $sisaTugas - $tugasSelesai;
     
@@ -1359,12 +1379,32 @@ class APIController extends Controller
     
             $sisaTugas = $limitMap[$membership] ?? 0;
     
-            $tugasSelesai = DB::table('transactions_users')
+            // Hitung tugas selesai: deret 'combination' berurutan dihitung 1
+            $types = DB::table('transactions_users')
                 ->where('id_users', $userId)
                 ->where('set', $positionSet)
                 ->where('status', 0)
                 ->whereDate('created_at', $today)
-                ->count();
+                ->orderBy('urutan')       // jaga urutan grup
+                ->orderBy('created_at')   // fallback urutan waktu
+                ->orderBy('id')           // penentu terakhir agar stabil
+                ->pluck('type');
+
+            $tugasSelesai = 0;
+            $prev = null;
+
+            foreach ($types as $type) {
+                if ($type === 'combination') {
+                    // hanya tambah saat awal deret combination
+                    if ($prev !== 'combination') {
+                        $tugasSelesai++;
+                    }
+                } else {
+                    // selain combination selalu dihitung 1
+                    $tugasSelesai++;
+                }
+                $prev = $type;
+            }
     
             $tugasSekarang = $sisaTugas - $tugasSelesai;
     
