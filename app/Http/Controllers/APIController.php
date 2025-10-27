@@ -720,8 +720,6 @@ class APIController extends Controller
         }
     }
 
-
-
     public function getFinance(Request $request)
     {
         $token = $request->header('Authorization');
@@ -767,6 +765,9 @@ class APIController extends Controller
     
     public function getProduk(Request $request)
     {
+        // =========================
+        // Tahap 1: Ambil & validasi token JWT dari header
+        // =========================
         $token = $request->header('Authorization');
         if (!$token) {
             return response()->json([
@@ -774,12 +775,18 @@ class APIController extends Controller
                 'message' => 'Token is missing',
             ], 401);
         }
-    
+
         try {
+            // Decode JWT (alg HS256) menggunakan secret dari config
             $secretKey = config('jwt.secret');
             $decoded = JWT::decode(str_replace('Bearer ', '', $token), new Key($secretKey, 'HS256'));
+
+            // Ambil userId dari claim 'sub'
             $userId = $decoded->sub;
-    
+
+            // =========================
+            // Tahap 2: Validasi keberadaan user
+            // =========================
             $user = DB::table('users')->where('id', $userId)->first();
             if (!$user) {
                 return response()->json([
@@ -788,22 +795,23 @@ class APIController extends Controller
                 ], 404);
             }
             
-            // Ambil settingan website
+            // =========================
+            // Tahap 3: Validasi status website (settings)
+            // =========================
             $setting = DB::table('settings')->first();
-            
-            // Cek kalau website sedang libur
+
+            // Jika website ditandai "closed" (libur), hentikan
             if ($setting && $setting->closed == 1) {
                 return response()->json([
                     'status' => 'error',
                     'message' => 'The website is currently on a break, please wait or contact admin.',
                 ], 400);
             }
-            
-            // Cek waktu kerja
+
+            // Opsi: Validasi jam kerja (dinonaktifkan di kode Anda)
             // if ($setting && $setting->work_time) {
             //     [$startTime, $endTime] = array_map('trim', explode('-', $setting->work_time));
             //     $nowTime = now()->format('H:i');
-            
             //     if (!($nowTime >= $startTime && $nowTime <= $endTime)) {
             //         return response()->json([
             //             'status' => 'error',
@@ -811,7 +819,10 @@ class APIController extends Controller
             //         ], 400);
             //     }
             // }
-            
+
+            // =========================
+            // Tahap 4: Validasi data keuangan user ✅
+            // =========================
             $finance = DB::table('finance_users')->where('id_users', $userId)->first();
             if (!$finance) {
                 return response()->json([
@@ -819,159 +830,158 @@ class APIController extends Controller
                     'message' => 'Finance data not found',
                 ], 404);
             }
-            
+
             $cekSaldo = $finance->saldo;
-            $cekBeku = $finance->saldo_beku;
-            
-            // Logika baru
+            $cekBeku  = $finance->saldo_beku;
+
+            // Aturan baru: jika saldo < 50 DAN saldo_beku < 0 → tolak
             if (($cekSaldo < 50 && $cekBeku < 0)) {
                 return response()->json([
                     'status' => 'error',
                     'message' => 'Please check on Apps Record to submit your Pending Data.',
                 ], 400);
             }
-    
-            $today = now()->toDateString();
+
+            // =========================
+            // Tahap 5: Tentukan batas tugas harian dari membership & hitung sisa ✅
+            // =========================
+            $today       = now()->toDateString();
             $positionSet = $user->position_set;
-            $membership = $user->membership;
-    
+            $membership  = $user->membership;
+
+            // Peta limit harian per membership
             $limitMap = [
-                'Normal' => 40,
-                'Gold' => 50,
+                'Normal'   => 40,
+                'Gold'     => 50,
                 'Platinum' => 55,
-                'Crown' => 55,
+                'Crown'    => 55,
             ];
-    
+
+            // Default 0 jika membership di luar peta
             $sisaTugas = $limitMap[$membership] ?? 0;
-    
-            // Hitung tugas selesai: deret 'combination' berurutan dihitung 1
-            $types = DB::table('transactions_users')
+
+            // Ambil kelompok transaksi "belum selesai" (status=0) untuk hari ini berdasarkan urutan & type
+            $groups = DB::table('transactions_users')
                 ->where('id_users', $userId)
                 ->where('set', $positionSet)
                 ->where('status', 0)
                 ->whereDate('created_at', $today)
-                ->orderBy('urutan')       // jaga urutan grup
-                ->orderBy('created_at')   // fallback urutan waktu
-                ->orderBy('id')           // penentu terakhir agar stabil
-                ->pluck('type');
+                ->select('urutan', 'type')
+                ->distinct()
+                ->get();
 
-            $tugasSelesai = 0;
-            $prev = null;
-
-            foreach ($types as $type) {
-                if ($type === 'combination') {
-                    // hanya tambah saat awal deret combination
-                    if ($prev !== 'combination') {
-                        $tugasSelesai++;
-                    }
-                } else {
-                    // selain combination selalu dihitung 1
-                    $tugasSelesai++;
-                }
-                $prev = $type;
-            }
-    
+            // Hitung total tugas yang sudah dibuat (status=0 hari ini dianggap "sudah dibuat")
+            $tugasSelesai  = $groups->count();
             $tugasSekarang = $sisaTugas - $tugasSelesai;
-    
+
+            // Jika kuota habis → optionally absen (khusus position_set=2) lalu hentikan
             if ($tugasSekarang <= 0) {
-                // Jika position_set = 2
                 if ($positionSet == 2) {
-                    // Cek apakah user sudah absen hari ini
+                    // Cek apakah sudah absen hari ini
                     $sudahAbsenHariIni = DB::table('absen_users')
                         ->where('id_users', $userId)
                         ->whereDate('created_at', $today)
                         ->exists();
-                
-                    // Hitung jumlah hari unik absen
+
+                    // Hitung total hari unik sudah absen
                     $jumlahHariBerbeda = DB::table('absen_users')
                         ->where('id_users', $userId)
                         ->groupBy(DB::raw('DATE(created_at)'))
                         ->count();
-                
+
+                    // Jika belum absen hari ini dan total < 5 hari → insert absen
                     if (!$sudahAbsenHariIni && $jumlahHariBerbeda < 5) {
                         DB::table('absen_users')->insert([
-                            'id_users' => $userId,
+                            'id_users'   => $userId,
                             'created_at' => now(),
                         ]);
                     }
                 }
-            
+
                 return response()->json([
-                    'status' => 'error',
+                    'status'  => 'error',
                     'message' => 'Semua Tugas Sudah Selesai Dikerjakan',
                 ]);
             }
-    
-            // Cek transaksi status = 1
+
+            // =========================
+            // Tahap 6: Jika ada transaksi aktif (status=1) hari ini → kembalikan agar "resume" ✅
+            // =========================
             $existing = DB::table('transactions_users')
                 ->where('id_users', $userId)
                 ->where('status', 1)
                 ->whereDate('created_at', $today)
                 ->orderByDesc('created_at')
                 ->first();
-            
+
             if ($existing) {
                 if ($existing->type === 'combination') {
-                    // Ambil semua transaksi combination
+                    // Ambil semua transaksi combination (status=1) hari ini
                     $combinationTransactions = DB::table('transactions_users')
                         ->where('id_users', $userId)
                         ->where('status', 1)
                         ->where('type', 'combination')
                         ->whereDate('created_at', $today)
                         ->get();
-            
+
                     if ($combinationTransactions->isNotEmpty()) {
+                        // Ambil produk terkait
                         $productIds = $combinationTransactions->pluck('id_products')->toArray();
                         $products = DB::table('products')
                             ->whereIn('id', $productIds)
                             ->select('id', 'product_name', 'product_image')
                             ->get()
                             ->keyBy('id');
-            
+
+                        // Pilih transaksi berharga terbesar sebagai "representatif"
                         $highestTransaction = $combinationTransactions->sortByDesc('price')->first();
                         $highestProduct = $products[$highestTransaction->id_products] ?? null;
-            
-                        $totalPrice = $combinationTransactions->sum('price');
+
+                        // Hitung total price & profit seluruh combination hari ini
+                        $totalPrice  = $combinationTransactions->sum('price');
                         $totalProfit = $combinationTransactions->sum('profit');
-            
+
                         if ($highestProduct) {
                             return response()->json([
-                                'status' => 'success',
+                                'status'  => 'success',
                                 'message' => 'Boost combination data retrieved successfully',
-                                'data' => (object) [
-                                    'id' => $highestProduct->id,
-                                    'product_name' => $highestProduct->product_name,
+                                'data'    => (object) [
+                                    'id'            => $highestProduct->id,
+                                    'product_name'  => $highestProduct->product_name,
                                     'product_image' => $highestProduct->product_image,
-                                    'price' => round($totalPrice, 2),
-                                    'profit' => round($totalProfit, 2),
+                                    'price'         => round($totalPrice, 2),
+                                    'profit'        => round($totalProfit, 2),
                                 ],
                             ]);
                         }
                     }
                 } else {
-                    // Normal single transaction
+                    // existing type normal → kembalikan produk tunggalnya
                     $product = DB::table('products')
                         ->where('id', $existing->id_products)
                         ->select('id', 'product_name', 'product_image')
                         ->first();
-            
+
                     if ($product) {
                         return response()->json([
-                            'status' => 'success',
+                            'status'  => 'success',
                             'message' => 'Boost data retrieved successfully',
-                            'data' => (object) [
-                                'id' => $product->id,
-                                'product_name' => $product->product_name,
+                            'data'    => (object) [
+                                'id'            => $product->id,
+                                'product_name'  => $product->product_name,
                                 'product_image' => $product->product_image,
-                                'price' => $existing->price,
-                                'profit' => $existing->profit,
+                                'price'         => $existing->price,
+                                'profit'        => $existing->profit,
                             ],
                         ]);
                     }
                 }
             }
-            
-            // Hitung jumlah kombinasi
+
+            // =========================
+            // Tahap 7: Hitung ulang urutan (sequence) dengan mempertimbangkan combination yang sudah ada hari ini
+            // =========================
+            // Jumlah "kelompok combination" unik (berdasarkan urutan)
             $jumlahCombination = DB::table('transactions_users')
                 ->where('id_users', $userId)
                 ->where('set', $positionSet)
@@ -981,178 +991,213 @@ class APIController extends Controller
                 ->count();
 
             if ($jumlahCombination > 0) {
-                $urutanTransaksi = DB::table('transactions_users')
-                    ->where('id_users', $userId)
-                    ->where('set', $positionSet)
-                    ->whereDate('created_at', $today)
-                    ->max('urutan') ?? 0;
-                    
-                $totCombination = DB::table('transactions_users')
-                    ->where('id_users', $userId)
-                    ->where('set', $positionSet)
-                    ->whereDate('created_at', $today)
-                    ->where('type', 'combination')
-                    ->distinct('urutan')
-                    ->count('urutan');
-                    
-                $urutanAdaTransaksi = $urutanTransaksi + $totCombination;
-                
-                // Gunakan pengurangan sesuai jumlah combination
-                $nextUrutan = $urutanAdaTransaksi - max(0, $totCombination - 1);
-                $urutanTransaksi = $urutanAdaTransaksi;
+                // 1) urutan terbesar pada transactions_users untuk user+set (hari ini)
+                $getUrutanSekarang = (int) (
+                    DB::table('transactions_users')
+                        ->where('id_users', $userId)
+                        ->where('set', $positionSet)
+                        ->max('urutan') ?? 0
+                );
+
+                // 2) sequence terkecil pada combination_users untuk user+set
+                $getUrutanKombinasiSekarang = (int) (
+                    DB::table('combination_users')
+                        ->where('id_users', $userId)
+                        ->where('set_boost', $positionSet)
+                        ->min('sequence') ?? 0
+                );
+
+                // 3) selisih urutan (jika negatif jadikan positif)
+                $selisihUrutan = abs($getUrutanSekarang - $getUrutanKombinasiSekarang);
+
+                // 4) urutanTransaksi = urutan sekarang + 1
+                $urutanTransaksi = $getUrutanSekarang + 1;
+
+                // 5) nextUrutan = (urutanTransaksi - 1) + selisihUrutan
+                $nextUrutan = $urutanTransaksi + 1;
+                $targetSequence = (int)$urutanTransaksi; // ?
             } else {
-                $urutanTransaksi = DB::table('transactions_users')
+                // Jika belum ada combination, ambil urutan maksimum saat ini
+                $geturutanTransaksi = DB::table('transactions_users')
                     ->where('id_users', $userId)
                     ->where('set', $positionSet)
                     ->whereDate('created_at', $today)
                     ->max('urutan') ?? 0;
-                    
-                $nextUrutan = $urutanTransaksi + 1 ;
+
+                $urutanTransaksi = $geturutanTransaksi + 1; // Dimulai dari 0 + 1
+                $nextUrutan = $urutanTransaksi + 1; // Urutan pertama + 1
+
+                $targetSequence = $urutanTransaksi;
             }
-            
+
+            // =========================
+            // Tahap 8: Coba bentuk transaksi "combination" baru berdasarkan tabel combination_users
+            // =========================
             $combinationData = DB::table('combination_users')
                 ->where('id_users', $userId)
                 ->get();
-            
+
             $selectedProducts = [];
-            $totalKombinasi = count($combinationData);
+            $totalKombinasi   = count($combinationData);
+
+            // Ambil saldo terbaru untuk perhitungan price/profit
             $userFinance = DB::table('finance_users')->where('id_users', $userId)->first();
             $saldo = $userFinance->saldo ?? 0;
-            
-            foreach ($combinationData as $index => $item) {
-                if ($item->set_boost == $positionSet && $item->sequence == $urutanTransaksi) {
+
+            $comboIndex = 0; // index item dalam kombinasi yang sedang dibentuk
+
+            foreach ($combinationData as $item) {
+                // Filter baris config: harus sesuai set_boost dan sequence
+                if ((int)$item->set_boost === (int)$positionSet && (int)$item->sequence === $targetSequence) {
+
+                    // Ambil info produk
                     $product = DB::table('products')
                         ->where('id', $item->id_produk)
                         ->select('id', 'product_name', 'product_image')
                         ->first();
-            
+
                     if ($product) {
-                        // Hitung price berdasarkan kombinasi ke berapa
-                        if ($index == 0) {
-                            $percentage = 0.70; // 70% untuk kombinasi pertama
-                        } elseif ($index == 1) {
-                            $percentage = 0.75; // 75% untuk kombinasi kedua
-                        } elseif ($index == 2) {
-                            $percentage = 0.85; // 85% untuk kombinasi ketiga
-                        } else {
-                            $percentage = 0.70; // default kalau lebih dari 3, tetap 70%
-                        }
-            
-                        $unitPrice = round($saldo * $percentage, 2);
+                        // Skema persentase harga per urutan item di kombinasi
+                        // (0) 70%, (1) 75%, (2) 85%, default 70%
+                        $percentage = match ($comboIndex) {
+                            0 => 0.70,
+                            1 => 0.75,
+                            2 => 0.85,
+                            default => 0.70,
+                        };
+
+                        // Hitung price & profit item kombinasi
+                        $unitPrice  = round($saldo * $percentage, 2);
                         $unitProfit = round($unitPrice * 0.05, 2);
-            
+
+                        // Kumpulkan item terpilih
                         $selectedProducts[] = (object) [
-                            'id' => $product->id,
-                            'product_name' => $product->product_name,
+                            'id'            => $product->id,
+                            'product_name'  => $product->product_name,
                             'product_image' => $product->product_image,
-                            'price' => $unitPrice,
-                            'profit' => $unitProfit,
+                            'price'         => $unitPrice,
+                            'profit'        => $unitProfit,
                         ];
+
+                        $comboIndex++;
                     }
                 }
             }
 
-            
             if (!empty($selectedProducts)) {
                 foreach ($selectedProducts as $product) {
                     DB::table('transactions_users')->insert([
-                        'id_users' => $userId,
+                        'id_users'    => $userId,
                         'id_products' => $product->id,
-                        'set' => $positionSet,
-                        'type' => 'combination',
-                        'price' => $product->price,
-                        'profit' => $product->profit,
-                        'status' => 1,
-                        'urutan' => $nextUrutan,
-                        'created_at' => now(),
-                        'updated_at' => now(),
+                        'set'         => $positionSet,
+                        'type'        => 'combination',
+                        'price'       => $product->price,
+                        'profit'      => $product->profit,
+                        'status'      => 1,            // dianggap aktif/siap diproses
+                        'urutan'      => $urutanTransaksi,  // semua item satu kelompok urutan yang sama
+                        'created_at'  => now(),
+                        'updated_at'  => now(),
                     ]);
                 }
-            
-                // Ambil produk dengan price paling besar
+
+                // Pilih item combination dengan price terbesar sebagai representatif
                 $highestProduct = collect($selectedProducts)->sortByDesc('price')->first();
-            
-                // Hitung total keseluruhan price dan profit dari semua kombinasi
-                $totalPrice = collect($selectedProducts)->sum('price');
+
+                // Total kumulatif price & profit dari semua item kombinasi
+                $totalPrice  = collect($selectedProducts)->sum('price');
                 $totalProfit = collect($selectedProducts)->sum('profit');
-            
+
                 return response()->json([
-                    'status' => 'success',
+                    'status'  => 'success',
                     'message' => 'Boost combination data retrieved successfully',
-                    'data' => (object) [
-                        'id' => $highestProduct->id,
-                        'product_name' => $highestProduct->product_name,
-                        'product_image' => $highestProduct->product_image,
-                        'price' => round($totalPrice, 2),
-                        'profit' => round($totalProfit, 2),
+                    'data'    => (object) [
+                        'id'                   => $highestProduct->id,
+                        'product_name'         => $highestProduct->product_name,
+                        'product_image'        => $highestProduct->product_image,
+                        'price'                => round($totalPrice, 2),
+                        'profit'               => round($totalProfit, 2),
+                        'urutanSekarang'      => $urutanTransaksi, // ?
+                        'nextUrutan'        => $nextUrutan, // ?
+                        'targetSequence'       => $targetSequence, // ?
                     ],
                 ]);
             }
 
-    
-            // Jika tidak ada kombinasi, fallback ke normal
+            // =========================
+            // Tahap 9: Fallback → pilih 1 produk "normal" acak (belum pernah dipakai hari ini)
+            // =========================
             $usedProductIds = DB::table('transactions_users')
                 ->where('id_users', $userId)
                 ->whereDate('created_at', $today)
                 ->pluck('id_products')
                 ->toArray();
-    
+
+            // Pilih produk acak yang belum terpakai hari ini
             $randomProduct = DB::table('products')
                 ->whereNotIn('id', $usedProductIds)
                 ->inRandomOrder()
                 ->select('id', 'product_name', 'product_image')
                 ->first();
-    
+
             if ($randomProduct) {
-                $unitPrice = round($saldo * 0.45, 2);
+                // Skema pricing normal: 45% dari saldo, profit 0.5%
+                $unitPrice  = round($saldo * 0.45, 2);
                 $unitProfit = round($unitPrice * 0.005, 3);
-    
+
                 $product = (object) [
-                    'id' => $randomProduct->id,
-                    'product_name' => $randomProduct->product_name,
+                    'id'            => $randomProduct->id,
+                    'product_name'  => $randomProduct->product_name,
                     'product_image' => $randomProduct->product_image,
-                    'price' => round($unitPrice, 2),
-                    'profit' => round($unitProfit, 2),
+                    'price'         => round($unitPrice, 2),
+                    'profit'        => round($unitProfit, 2),
+                    'nextUrutan'   => $nextUrutan,
+                    'targetSequence' => $targetSequence, // ?
                 ];
-    
+
+                // Simpan transaksi normal (status=1)
                 DB::table('transactions_users')->insert([
-                    'id_users' => $userId,
+                    'id_users'    => $userId,
                     'id_products' => $product->id,
-                    'set' => $positionSet,
-                    'type' => 'normal',
-                    'price' => $product->price,
-                    'profit' => $product->profit,
-                    'status' => 1,
-                    'urutan' => $nextUrutan,
-                    'created_at' => now(),
-                    'updated_at' => now(),
+                    'set'         => $positionSet,
+                    'type'        => 'normal',
+                    'price'       => $product->price,
+                    'profit'      => $product->profit,
+                    'status'      => 1,
+                    'urutan'      => $urutanTransaksi,
+                    'created_at'  => now(),
+                    'updated_at'  => now(),
                 ]);
-    
+
                 return response()->json([
-                    'status' => 'success',
+                    'status'  => 'success',
                     'message' => 'Boost normal product retrieved successfully',
-                    'data' => $product,
+                    'data'    => $product,
                 ]);
             }
-    
+
+            // Jika tidak ada produk sama sekali
             return response()->json([
-                'status' => 'error',
+                'status'  => 'error',
                 'message' => 'No product found',
             ], 404);
+
         } catch (\Firebase\JWT\ExpiredException $e) {
+            // Token kadaluarsa
             return response()->json([
-                'status' => 'error',
+                'status'  => 'error',
                 'message' => 'Token expired',
             ], 401);
         } catch (\UnexpectedValueException $e) {
+            // Token tidak valid (format/signature)
             return response()->json([
-                'status' => 'error',
+                'status'  => 'error',
                 'message' => 'Invalid token',
             ], 401);
         } catch (\Exception $e) {
+            // Guard fallback error umum
             Log::error('getProduk error: ' . $e->getMessage());
             return response()->json([
-                'status' => 'error',
+                'status'  => 'error',
                 'message' => 'Something went wrong',
             ], 500);
         }
@@ -1249,10 +1294,34 @@ class APIController extends Controller
                         $positionSet = $user->position_set;
                         
                         if ($combinationExists) {
-                            DB::table('combination_users')
-                                ->where('id_users', $userId)
-                                ->where('set_boost', $positionSet)
-                                ->delete();
+                            $productIds = is_array($request->id_products) ? $request->id_products : [$request->id_products];
+
+                            DB::beginTransaction();
+                            try {
+                                foreach ($productIds as $pid) {
+                                    // Cari baris acuan untuk tahu sequence & set_boost-nya
+                                    $ref = DB::table('combination_users')
+                                        ->where('id_users', $userId)
+                                        ->where('id_produk', $pid)
+                                        ->first();
+
+                                    if ($ref) {
+                                        // Hapus semua baris dengan user, set_boost, dan sequence yang sama
+                                        DB::table('combination_users')
+                                            ->where('id_users', $userId)
+                                            ->where('set_boost', $ref->set_boost)
+                                            ->where('sequence', $ref->sequence)
+                                            ->delete();
+                                    }
+                                }
+
+                                DB::commit();
+                            } catch (\Throwable $e) {
+                                DB::rollBack();
+                                // Opsional: Log error
+                                // Log::error('Delete combination group failed: '.$e->getMessage());
+                                return back()->with('error', 'Gagal menghapus kombinasi.');
+                            }
                         }
 
                     } else {

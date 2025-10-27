@@ -169,7 +169,8 @@ class UsersAdmin extends Controller
                 ->where('set', $positionSet)
                 ->where('status', 0)
                 ->whereDate('created_at', $today)
-                ->count();
+                ->distinct('urutan')
+                ->count('urutan');
         
             $tugasSekarang = $sisaTugas - $tugasSelesai;
             $user->task_done = $tugasSelesai;
@@ -1144,13 +1145,13 @@ class UsersAdmin extends Controller
         return redirect()->route('admin.users.combinations', ['id' => $id])->with('success', 'Combinations saved.');
     }
 
-    // Add single combination via modal
     public function addCombination(Request $request, $id)
     {
         $request->validate([
             'set_boost' => 'required|integer|in:1,2,3',
-            'sequence' => 'required|integer|min:0',
-            'products' => 'required|array|min:1|max:3',
+            'sequence'  => 'required|integer|min:0',
+            'products'  => 'required|array|min:1|max:3',
+            'products.*'=> 'integer|distinct', // pastikan unik & integer
         ]);
 
         $user = DB::table('users')->where('id', $id)->first();
@@ -1158,11 +1159,11 @@ class UsersAdmin extends Controller
             return redirect()->back()->with('error', 'User not found.');
         }
 
-        $set = (int)$request->set_boost;
-        $seq = (int)$request->sequence;
-        $products = $request->products;
+        $set      = (int) $request->set_boost;
+        $seq      = (int) $request->sequence;
+        $products = array_map('intval', $request->products);
 
-        // Prevent adding if same set+sequence already exists
+        // Cegah duplikasi set+sequence
         $exists = DB::table('combination_users')
             ->where('id_users', $id)
             ->where('set_boost', $set)
@@ -1172,41 +1173,143 @@ class UsersAdmin extends Controller
             return redirect()->back()->with('error', "Combination already exists for Set {$set} at Sequence {$seq}.");
         }
 
-        // Enforce max 5 combinations (distinct sequences) per set
+        // Maksimal 5 sequence per set (distinct sequence)
         $countInSet = DB::table('combination_users')
             ->where('id_users', $id)
             ->where('set_boost', $set)
-            ->select('sequence')
             ->distinct()
-            ->count();
-        if ($countInSet >= 5) {
-            return redirect()->back()->with('error', 'Maximum 5 combinations per set reached.');
+            ->count('sequence');
+        if ($countInSet >= 7) {
+            return redirect()->back()->with('error', 'Maximum 7 combinations per set reached.');
         }
 
-        // Prevent using products already used by this user in any set
+        // Cegah produk yang sudah pernah dipakai user di set manapun
         $dupProducts = DB::table('combination_users')
             ->where('id_users', $id)
             ->whereIn('id_produk', $products)
-            ->pluck('id_produk')
-            ->unique()
-            ->values()
-            ->all();
+            ->pluck('id_produk')->unique()->values()->all();
         if (!empty($dupProducts)) {
             return redirect()->back()->with('error', 'These products are already used: ' . implode(', ', $dupProducts));
         }
 
-        foreach ($products as $pid) {
-            DB::table('combination_users')->insert([
-                'id_users' => $id,
-                'id_produk' => $pid,
-                'sequence' => $seq,
-                'set_boost' => $set,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+        DB::beginTransaction();
+        try {
+            foreach ($products as $pid) {
+                DB::table('combination_users')->insert([
+                    'id_users'   => $id,
+                    'id_produk'  => $pid,
+                    'sequence'   => $seq,
+                    'set_boost'  => $set,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Failed to add combination.');
         }
 
-        return redirect()->route('admin.users.combinations', ['id' => $id, 'set' => $set])->with('success', 'Combination added.');
+        return redirect()->route('admin.users.combinations', ['id' => $id, 'set' => $set])
+            ->with('success', 'Combination added.');
+    }
+
+    public function updateCombination(Request $request, $id)
+    {
+        $request->validate([
+            'original_set'      => 'required|integer|in:1,2,3',
+            'original_sequence' => 'required|integer|min:0',
+            'set_boost'         => 'required|integer|in:1,2,3',
+            'sequence'          => 'required|integer|min:0',
+            'products'          => 'required|array|min:1|max:3',
+            'products.*'        => 'integer|distinct',
+        ]);
+
+        $origSet     = (int) $request->original_set;
+        $origSeq     = (int) $request->original_sequence;
+        $newSet      = (int) $request->set_boost;
+        $newSeq      = (int) $request->sequence;
+        $newProducts = array_map('intval', $request->products);
+
+        // Cegah tabrakan tujuan (set+sequence)
+        $existsSameDest = DB::table('combination_users')
+            ->where('id_users', $id)
+            ->where('set_boost', $newSet)
+            ->where('sequence', $newSeq)
+            // Abaikan diri sendiri jika tidak berubah
+            ->when($origSet === $newSet && $origSeq === $newSeq, function ($q) {
+                return $q->whereRaw('1=0');
+            })
+            ->exists();
+        if ($existsSameDest) {
+            return redirect()->back()->with('error', "Combination already exists for Set {$newSet} at Sequence {$newSeq}.");
+        }
+
+        // Produk tidak boleh dipakai di kombinasi lain (kecuali kombinasi asal sendiri)
+        $originalProducts = DB::table('combination_users')
+            ->where('id_users', $id)
+            ->where('set_boost', $origSet)
+            ->where('sequence', $origSeq)
+            ->pluck('id_produk')
+            ->toArray();
+
+        $dupProducts = DB::table('combination_users')
+            ->where('id_users', $id)
+            ->whereIn('id_produk', $newProducts)
+            ->where(function ($q) use ($origSet, $origSeq) {
+                $q->where('set_boost', '!=', $origSet)
+                ->orWhere('sequence', '!=', $origSeq);
+            })
+            ->pluck('id_produk')->unique()->values()->all();
+
+        // Filter out produk yang memang milik kombinasi asal
+        $dupProducts = array_values(array_diff($dupProducts, $originalProducts));
+        if (!empty($dupProducts)) {
+            return redirect()->back()->with('error', 'These products are already used: ' . implode(', ', $dupProducts));
+        }
+
+        // Maksimal 5 sequence per set (hanya cek jika pindah ke SET yang berbeda).
+        // Jika set sama, pindah sequence tidak menambah jumlah distinct sequence.
+        if ($origSet !== $newSet) {
+            $countInDestSet = DB::table('combination_users')
+                ->where('id_users', $id)
+                ->where('set_boost', $newSet)
+                ->distinct()
+                ->count('sequence');
+            if ($countInDestSet >= 7) {
+                return redirect()->back()->with('error', 'Maximum 7 combinations per set reached.');
+            }
+        }
+
+        DB::beginTransaction();
+        try {
+            // Hapus baris kombinasi asal
+            DB::table('combination_users')
+                ->where('id_users', $id)
+                ->where('set_boost', $origSet)
+                ->where('sequence', $origSeq)
+                ->delete();
+
+            // Insert kombinasi baru
+            foreach ($newProducts as $pid) {
+                DB::table('combination_users')->insert([
+                    'id_users'   => $id,
+                    'id_produk'  => $pid,
+                    'sequence'   => $newSeq,
+                    'set_boost'  => $newSet,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Failed to update combination.');
+        }
+
+        return redirect()->route('admin.users.combinations', ['id' => $id, 'set' => $newSet])
+            ->with('success', 'Combination updated.');
     }
 
     // Delete a combination by set + sequence (optional helper)
@@ -1224,95 +1327,6 @@ class UsersAdmin extends Controller
             ->delete();
 
         return redirect()->route('admin.users.combinations', ['id' => $id, 'set' => $request->set_boost])->with('success', 'Combination deleted.');
-    }
-
-    // Update combination (change sequence and/or products) with conflict checks
-    public function updateCombination(Request $request, $id)
-    {
-        $request->validate([
-            'original_set' => 'required|integer|in:1,2,3',
-            'original_sequence' => 'required|integer|min:0',
-            'set_boost' => 'required|integer|in:1,2,3',
-            'sequence' => 'required|integer|min:0',
-            'products' => 'required|array|min:1|max:3',
-        ]);
-
-        $origSet = (int)$request->original_set;
-        $origSeq = (int)$request->original_sequence;
-        $newSet = (int)$request->set_boost;
-        $newSeq = (int)$request->sequence;
-        $newProducts = $request->products;
-
-        // If moving to a different sequence in the same set, prevent collision
-        $existsSameDest = DB::table('combination_users')
-            ->where('id_users', $id)
-            ->where('set_boost', $newSet)
-            ->where('sequence', $newSeq)
-            ->when($origSet === $newSet && $origSeq === $newSeq, function ($q) {
-                return $q->whereRaw('1=0'); // no-op to ignore current
-            })
-            ->exists();
-        if ($existsSameDest) {
-            return redirect()->back()->with('error', "Combination already exists for Set {$newSet} at Sequence {$newSeq}.");
-        }
-
-        // Prevent products duplication globally (exclude products in the original combination)
-        $originalProducts = DB::table('combination_users')
-            ->where('id_users', $id)
-            ->where('set_boost', $origSet)
-            ->where('sequence', $origSeq)
-            ->pluck('id_produk')
-            ->toArray();
-
-        $dupProducts = DB::table('combination_users')
-            ->where('id_users', $id)
-            ->whereIn('id_produk', $newProducts)
-            ->where(function ($q) use ($origSet, $origSeq) {
-                $q->where('set_boost', '!=', $origSet)
-                  ->orWhere('sequence', '!=', $origSeq);
-            })
-            ->pluck('id_produk')
-            ->unique()
-            ->values()
-            ->all();
-        // Filter out originals
-        $dupProducts = array_values(array_diff($dupProducts, $originalProducts));
-        if (!empty($dupProducts)) {
-            return redirect()->back()->with('error', 'These products are already used: ' . implode(', ', $dupProducts));
-        }
-
-        // Enforce max 5 combinations per set for destination set
-        if (!($origSet === $newSet && $origSeq === $newSeq)) {
-            $countInSet = DB::table('combination_users')
-                ->where('id_users', $id)
-                ->where('set_boost', $newSet)
-                ->select('sequence')
-                ->distinct()
-                ->count();
-            if ($countInSet >= 5) {
-                return redirect()->back()->with('error', 'Maximum 5 combinations per set reached.');
-            }
-        }
-
-        // Move: delete original rows and insert new set/sequence/products
-        DB::table('combination_users')
-            ->where('id_users', $id)
-            ->where('set_boost', $origSet)
-            ->where('sequence', $origSeq)
-            ->delete();
-
-        foreach ($newProducts as $pid) {
-            DB::table('combination_users')->insert([
-                'id_users' => $id,
-                'id_produk' => $pid,
-                'sequence' => $newSeq,
-                'set_boost' => $newSet,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
-
-        return redirect()->route('admin.users.combinations', ['id' => $id, 'set' => $newSet])->with('success', 'Combination updated.');
     }
 
     

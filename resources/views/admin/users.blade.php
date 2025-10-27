@@ -230,14 +230,14 @@
                                             <strong class="me-1 text-danger">Combination:</strong> {{ $idsStr }}
                                         </div>
                                         <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-danger">
-                                            <strong class="me-1 text-danger">Order:</strong> {{ $user->display_sequence ?? '-' }}
+                                            <strong class="me-1 text-danger">Order:</strong> {{ $user->display_sequence - 1 ?? '-' }}
                                         </div>
                                         <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-danger">
                                             <strong class="me-1 text-danger">Set:</strong> {{ $user->display_set ?? '-' }}
                                         </div>
                                         @if($user->is_combination_active)
-                                            <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-danger">
-                                                <strong class="me-1 text-danger">Status:</strong> Currently processing combination order
+                                            <div class="d-flex flex-column justify-content-center align-items-center flex-row mb-1" style="color: red;">
+                                                <strong class="text-center"> Currently processing combination order</strong>
                                             </div>
                                         @endif
                                     @else
