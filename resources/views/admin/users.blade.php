@@ -95,7 +95,31 @@
 </script>
 @endsection
 @section('content')
-<div class="card p-4">        
+<div class="card p-4"> 
+            <div class="d-flex flex-row justify-content-between align-items-center mb-4">
+            <h5 class="font-bold">Users Records</h5>
+            @if(Auth::user()->level == 0)
+                <div class="d-flex flex-row justify-content-between align-items-center">
+                    <button class="btn btn-success text-white mr-2" data-toggle="modal" data-target="#addUserModal">
+                        <i class="fa fa-plus text-white mr-2"></i>
+                        Add Users
+                    </button>
+                    <div class="dropdown mr-2">
+                        <button class="btn btn-secondary dropdown-toggle" type="button" id="exportDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="fa fa-download mr-2"></i> Export
+                        </button>
+                        <div class="dropdown-menu" aria-labelledby="exportDropdown">
+                            <a class="dropdown-item" href="{{ route('admin.export-excel') }}">
+                                <i class="fa fa-file-excel mr-2 text-success"></i> Excel
+                            </a>
+                            <a class="dropdown-item" href="{{ route('admin.export-pdf') }}">
+                                <i class="fa fa-file-pdf mr-2 text-danger"></i> PDF
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            @endif
+        </div>       
         <div class="d-flex flex-row justify-between w-100">
             <form method="GET" class="mb-2" style="width:100px;">
                 <div class="d-flex align-items-center">
@@ -222,7 +246,9 @@
                                         <div class="d-flex justify-content-between align-items-center flex-row mb-0 text-danger">
                                             <strong class="me-1 text-danger">Order Boost:</strong>{{ $user->task_done }}/{{ $user->task_limit }}
                                         </div>
-                                        <small style="color: red;margin:0;padding:0;text-align:right;">* Current Set</small>
+                                        <div class="d-flex justify-content-between align-items-center flex-row mb-0 text-danger" style="color: red;">
+                                            <strong class="me-1" style="color: red;">Current Set:</strong> {{ $user->display_set ?? '-' }}
+                                        </div>
                                         @php
                                             $ids = $user->display_combination_products ?? [];
                                             $idsStr = empty($ids) ? '-' : implode(', ', $ids);
@@ -245,7 +271,9 @@
                                         <div class="d-flex justify-content-between align-items-center flex-row mb-0 text-black">
                                             <strong class="me-1">Order Boost:</strong>{{ $user->task_done }}/{{ $user->task_limit }}
                                         </div>
-                                        <small style="color: red;margin:0;padding:0;text-align:right;">* Current Set</small>
+                                        <div class="d-flex justify-content-between align-items-center flex-row mb-0 text-danger" style="color: red;">
+                                            <strong class="me-1" style="color: red;">Current Set:</strong> {{ $user->display_set ?? '-' }}
+                                        </div>
                                         <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-black">
                                             <strong class="me-1">Product ID:</strong>{{ $user->latest_product_id ?? '-' }}
                                         </div>
