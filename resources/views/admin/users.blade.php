@@ -184,7 +184,7 @@
                                 </div>
                             </td>
                             <td>
-                                <div class="d-flex flex-column flex-wrap gap-2 text-sm" style="width:200px;padding-top: 34.5px;">
+                                <div class="d-flex flex-column flex-wrap gap-2 text-sm" style="width:300px;padding-top: 34.5px;">
                                     <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-black"><strong class="me-1">Available Balance:</strong> {{ $user->finance->saldo ?? 'N/A' }}</div>
                                     <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-black"><strong class="me-1">Frozen Balance:</strong> {{ $user->finance->saldo_beku ?? 'N/A' }}</div>
                                     <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-black"><strong class="me-1">Mission Commission:</strong> {{ $user->finance->saldo_misi ?? 'N/A' }}</div>
@@ -199,35 +199,36 @@
                                         </a>
                                     </div>
                                     @endif
-                                    <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-sm text-black" style="width:200px;">
+                                    <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-sm text-black" style="width:300px;">
                                         <strong class="me-1">Recharge Times:</strong>
                                         {{ $user->deposit_count > 0 ? $user->deposit_count . ' times' : 'N/A' }}
                                     </div>
-                                    <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-sm text-black" style="width:200px;">
+                                    <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-sm text-black" style="width:300px;">
                                         <strong class="me-1">Recharge Amount:</strong>
                                         {{ $user->deposit_total > 0 ? number_format($user->deposit_total) : 'N/A' }}
                                     </div>
-                                    <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-sm text-black" style="width:200px;">
+                                    <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-sm text-black" style="width:300px;">
                                         <strong class="me-1">Withdrawal Times:</strong>
                                         {{ $user->withdrawal_count > 0 ? $user->withdrawal_count . ' times' : 'N/A' }}
                                     </div>
-                                    <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-sm text-black" style="width:200px;">
+                                    <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-sm text-black" style="width:300px;">
                                         <strong class="me-1">Withdrawal Amount:</strong>
                                         {{ $user->withdrawal_total > 0 ? number_format($user->withdrawal_total) : 'N/A' }}
                                     </div>
                             </td>
                             <td>
-                                <div class="d-flex flex-column flex-wrap gap-2 text-sm" style="width:200px;padding-top: 34.5px;">
+                                <div class="d-flex flex-column flex-wrap gap-2 text-sm" style="width:250px;padding-top: 34.5px;">
                                     @if($user->has_combination)
-                                        <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-danger">
+                                        <div class="d-flex justify-content-between align-items-center flex-row mb-0 text-danger">
                                             <strong class="me-1 text-danger">Order Boost:</strong>{{ $user->task_done }}/{{ $user->task_limit }}
                                         </div>
+                                        <small style="color: red;margin:0;padding:0;text-align:right;">* Current Set</small>
                                         @php
                                             $ids = $user->display_combination_products ?? [];
                                             $idsStr = empty($ids) ? '-' : implode(', ', $ids);
                                         @endphp
                                         <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-danger">
-                                            <strong class="me-1 text-danger">Combination:</strong> {{ $idsStr }}
+                                            <strong class="me-1 text-danger">Combination:</strong> <p>{{ $idsStr }}</p>
                                         </div>
                                         <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-danger">
                                             <strong class="me-1 text-danger">Order:</strong> {{ $user->display_sequence - 1 ?? '-' }}
@@ -241,9 +242,10 @@
                                             </div>
                                         @endif
                                     @else
-                                        <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-black">
+                                        <div class="d-flex justify-content-between align-items-center flex-row mb-0 text-black">
                                             <strong class="me-1">Order Boost:</strong>{{ $user->task_done }}/{{ $user->task_limit }}
                                         </div>
+                                        <small style="color: red;margin:0;padding:0;text-align:right;">* Current Set</small>
                                         <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-black">
                                             <strong class="me-1">Product ID:</strong>{{ $user->latest_product_id ?? '-' }}
                                         </div>
@@ -496,7 +498,7 @@
                                             <!-- Saldo -->
                                             <div class="form-group">
                                                 <label>Balance</label>
-                                                <input type="number" class="form-control" name="saldo" placeholder="0" min="-999999" step="0.01">
+                                                <input type="number" class="form-control" name="saldo" placeholder="0" step="0.01">
                                             </div>
                                             
                                             <!-- Saldo -->

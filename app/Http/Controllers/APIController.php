@@ -876,21 +876,20 @@ class APIController extends Controller
 
             // Jika kuota habis → optionally absen (khusus position_set=2) lalu hentikan
             if ($tugasSekarang <= 0) {
-                if ($positionSet == 2) {
-                    // Cek apakah sudah absen hari ini
-                    $sudahAbsenHariIni = DB::table('absen_users')
-                        ->where('id_users', $userId)
-                        ->whereDate('created_at', $today)
-                        ->exists();
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Semua Tugas Sudah Selesai Dikerjakan',
+                ]);
+            }
 
-                    // Hitung total hari unik sudah absen
-                    $jumlahHariBerbeda = DB::table('absen_users')
+            if ($tugasSekarang <= 1 && (int) $positionSet === 2) {
+                    // Hitung total absen penyelesaian (tanpa filter tanggal)
+                    $totalAbsen = DB::table('absen_users')
                         ->where('id_users', $userId)
-                        ->groupBy(DB::raw('DATE(created_at)'))
                         ->count();
 
-                    // Jika belum absen hari ini dan total < 5 hari → insert absen
-                    if (!$sudahAbsenHariIni && $jumlahHariBerbeda < 5) {
+                    // Insert jika total belum mencapai 5
+                    if ($totalAbsen < 5) {
                         DB::table('absen_users')->insert([
                             'id_users'   => $userId,
                             'created_at' => now(),
@@ -898,11 +897,6 @@ class APIController extends Controller
                     }
                 }
 
-                return response()->json([
-                    'status'  => 'error',
-                    'message' => 'Semua Tugas Sudah Selesai Dikerjakan',
-                ]);
-            }
 
             // =========================
             // Tahap 6: Jika ada transaksi aktif (status=1) hari ini → kembalikan agar "resume" ✅
