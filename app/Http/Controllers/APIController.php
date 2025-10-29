@@ -862,10 +862,15 @@ class APIController extends Controller
 
             // Jika kuota habis → optionally absen (khusus position_set=2) lalu hentikan
             if ($tugasSekarang <= 0) {
+                if ((int) $positionSet === 3) {
+                    return response()->json([
+                        'message' => "You've Reached Maximum  3 Sets Daily Data",
+                    ], 422);
+                }
+
                 return response()->json([
-                    'status'  => 'error',
-                    'message' => 'Semua Tugas Sudah Selesai Dikerjakan',
-                ]);
+                    'message' => 'Please Contact Customer Service to Reset Your Next Data',
+                ], 422);
             }
 
             if ($tugasSekarang <= 1 && (int) $positionSet === 2) {
@@ -1343,7 +1348,7 @@ class APIController extends Controller
         
                 return response()->json([
                     'status' => 'success',
-                    'message' => 'Submit Sucessfully',
+                    'message' => 'Submitted Successfully',
                 ]);
             }
             
