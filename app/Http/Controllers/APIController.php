@@ -91,20 +91,6 @@ class APIController extends Controller
                 $errors['username'] = 'Username is already taken.';
             }
     
-            // Validasi phone_email
-            if (empty($request->phone_email)) {
-                $errors['phone_email'] = 'Phone Number is required.';
-            } elseif (DB::table('users')->where('phone_email', $request->phone_email)->exists()) {
-                $errors['phone_email'] = 'Phone Number is already taken.';
-            }
-            
-            // Validasi phone_email dan atur email_only jika valid email
-            if (empty($request->email_only)) {
-                $errors['email_only'] = 'Email is required.';
-            } elseif (DB::table('users')->where('email_only', $request->email_only)->exists()) {
-                $errors['email_only'] = 'Email is already taken.';
-            }
-    
             // Validasi password
             if (empty($request->password)) {
                 $errors['password'] = 'Password is required.';
@@ -149,7 +135,7 @@ class APIController extends Controller
     
             // Simpan user
             $userId = DB::table('users')->insertGetId([
-                'name' => Str::lower(str_replace(' ', '', $request->username)),
+                'name' => $request->username,
                 'phone_email' => $request->phone_email,
                 'email_only' => $request->email_only,
                 'password' => Hash::make($request->password),
