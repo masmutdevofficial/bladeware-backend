@@ -105,8 +105,8 @@
                         Add Users
                     </button>
                     <div class="dropdown mr-2">
-                        <button class="btn btn-secondary dropdown-toggle" type="button" id="exportDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            <i class="fa fa-download mr-2"></i> Export
+                        <button class="btn btn-success text-white dropdown-toggle" type="button" id="exportDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="fa fa-file-excel mr-2 text-white"></i> Export
                         </button>
                         <div class="dropdown-menu" aria-labelledby="exportDropdown">
                             <a class="dropdown-item" href="{{ route('admin.export-excel') }}">
@@ -271,8 +271,8 @@
                                         <div class="d-flex justify-content-between align-items-center flex-row mb-0 text-black">
                                             <strong class="me-1">Order Boost:</strong>{{ $user->task_done }}/{{ $user->task_limit }}
                                         </div>
-                                        <div class="d-flex justify-content-between align-items-center flex-row mb-0 text-danger" style="color: red;">
-                                            <strong class="me-1" style="color: red;">Current Set:</strong> {{ $user->display_set ?? '-' }}
+                                        <div class="d-flex justify-content-between align-items-center flex-row mb-0 text-danger" >
+                                            <strong class="me-1">Current Set:</strong> {{ $user->position_set ?? '-' }}
                                         </div>
                                         <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-black">
                                             <strong class="me-1">Product ID:</strong>{{ $user->latest_product_id ?? '-' }}

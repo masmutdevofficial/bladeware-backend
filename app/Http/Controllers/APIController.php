@@ -90,21 +90,21 @@ class APIController extends Controller
             } elseif (DB::table('users')->where('name', $request->username)->exists()) {
                 $errors['username'] = 'Username is already taken.';
             }
-    
+
             // Validasi password
             if (empty($request->password)) {
                 $errors['password'] = 'Password is required.';
             } elseif (strlen($request->password) < 3) {
                 $errors['password'] = 'Password must be at least 3 characters long.';
             }
-    
+
             // Validasi withdrawal password
             if (empty($request->withdrawal_password)) {
                 $errors['withdrawal_password'] = 'Withdrawal Password is required.';
             } elseif (strlen($request->withdrawal_password) < 3) {
                 $errors['withdrawal_password'] = 'Withdrawal Password must be at least 3 characters long.';
             }
-    
+
             // Validasi referral
             $referralUplineId = null;
             if (empty($request->referral)) {
@@ -114,60 +114,194 @@ class APIController extends Controller
                 if (!$referrer) {
                     $errors['referral'] = 'Referral code not found.';
                 } else {
-                    $referralUplineId = $referrer->id; // untuk tracking jika diperlukan
+                    $referralUplineId = $referrer->id;
                 }
             }
-    
-            // Jika ada error validasi
+
             if (!empty($errors)) {
                 return response()->json([
-                    'status' => 'error',
+                    'status'  => 'error',
                     'message' => collect($errors)->first()
                 ], 422);
             }
-    
+
+            // ==== Mulai transaksi ====
+            DB::beginTransaction();
+
             // Generate referral code (6 karakter acak alfanumerik)
-            $generateReferral = strtoupper(Str::random(6)); // Contoh: x3HJCA
-    
+            $generateReferral = strtoupper(Str::random(6));
+
+            // Generate UID unik
             do {
                 $uid = 'UID' . mt_rand(100000, 999999);
             } while (DB::table('users')->where('uid', $uid)->exists());
-    
+
             // Simpan user
             $userId = DB::table('users')->insertGetId([
-                'name' => $request->username,
-                'phone_email' => $request->phone_email,
-                'email_only' => $request->email_only,
-                'password' => Hash::make($request->password),
-                'referral' => $generateReferral,
-                'referral_upline' => $request->referral,
-                'uid' => $uid,
-                'level' => 1,
-                'status' => 1,
-                'created_at' => now(),
-                'updated_at' => now(),
+                'name'            => $request->username,
+                'phone_email'     => $request->phone_email,
+                'email_only'      => $request->email_only,
+                'password'        => Hash::make($request->password),
+                'referral'        => $generateReferral,
+                'referral_upline' => $request->referral,   // simpan kode upline (atau $referralUplineId bila pakai id)
+                'uid'             => $uid,
+                'level'           => 1,
+                'status'          => 1,
+                'created_at'      => now(),
+                'updated_at'      => now(),
             ]);
-    
-            // Simpan ke finance_users
+
+            // Simpan ke finance_users (saldo awal 15)
             DB::table('finance_users')->insert([
-                'id_users' => $userId,
-                'saldo' => 15,
-                'komisi' => 0,
+                'id_users'            => $userId,
+                'saldo'               => 15,
+                'komisi'              => 0,
                 'withdrawal_password' => $request->withdrawal_password,
+                'created_at'          => now(),
+                'updated_at'          => now(),
+            ]);
+
+            // === Tambahkan bonus pendaftaran ke registered_bonus (15) ===
+            DB::table('registered_bonus')->insert([
+                'id_users'   => $userId,
+                'total_bonus'=> 15,           // DECIMAL(20,2) -> 15.00 juga boleh
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-    
+
+            DB::commit();
+            // ==== Selesai transaksi ====
+
             return response()->json([
-                'status' => 'success',
+                'status'  => 'success',
                 'message' => 'Registration successful',
             ]);
         } catch (\Exception $e) {
+            // rollback jika sebelumnya sudah beginTransaction
+            try { DB::rollBack(); } catch (\Throwable $t) {}
+
             return response()->json([
-                'status' => 'error',
-                'message' => 'An error occurred during registration',
+                'status'     => 'error',
+                'message'    => 'An error occurred during registration',
                 'errors_log' => $e->getMessage(),
             ], 500);
+        }
+    }
+
+
+    public function getBannerData(Request $request)
+    {
+        $token = $request->header('Authorization');
+        if (!$token) {
+            return response()->json([
+                'message' => 'Token is missing',
+            ], 401);
+        }
+
+        try {
+            // Decode JWT
+            $secretKey = config('jwt.secret');
+            $jwt = str_replace('Bearer ', '', $token);
+            $decoded = JWT::decode($jwt, new Key($secretKey, 'HS256'));
+            $userId  = $decoded->sub; // mengikuti pola sebelumnya
+
+            // Ambil registered_banner dari tabel users
+            $registeredBanner = DB::table('users')
+                ->where('id', $userId)
+                ->value('registered_banner');
+
+            if ($registeredBanner === null) {
+                // User tidak ditemukan atau kolom null
+                return response()->json([
+                    'message' => 'User not found or registered_banner is null',
+                ], 404);
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'data'   => [
+                    'registered_banner' => $registeredBanner,
+                ],
+            ], 200);
+
+        } catch (\Firebase\JWT\ExpiredException $e) {
+            return response()->json([
+                'message' => 'Token expired',
+            ], 401);
+        } catch (\UnexpectedValueException $e) {
+            return response()->json([
+                'message' => 'Invalid token',
+            ], 401);
+        } catch (\Exception $e) {
+            Log::error('getBannerData error: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Something went wrong',
+            ], 500);
+        }
+    }
+
+    public function setRegisteredBanner(Request $request)
+    {
+        $token = $request->header('Authorization');
+        if (!$token) {
+            return response()->json(['message' => 'Token is missing'], 401);
+        }
+
+        try {
+            // Decode JWT
+            $secretKey = config('jwt.secret');
+            $jwt = str_replace('Bearer ', '', $token);
+            $decoded = JWT::decode($jwt, new Key($secretKey, 'HS256'));
+            $userId  = $decoded->sub;
+
+            // Ambil user & nilai sekarang
+            $user = DB::table('users')
+                ->select('id', 'registered_banner')
+                ->where('id', $userId)
+                ->first();
+
+            if (!$user) {
+                return response()->json(['message' => 'User not found'], 404);
+            }
+
+            // Jika sudah 1, kembalikan sukses idempotent
+            if ((int) $user->registered_banner === 1) {
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'registered_banner already set to 1',
+                    'data' => ['registered_banner' => 1],
+                ], 200);
+            }
+
+            // Update hanya jika masih 0
+            $affected = DB::table('users')
+                ->where('id', $userId)
+                ->where('registered_banner', 0)
+                ->update([
+                    'registered_banner' => 1,
+                    'updated_at' => now(),
+                ]);
+
+            if ($affected === 0) {
+                // Gagal update karena kondisi tidak terpenuhi
+                return response()->json([
+                    'message' => 'Update blocked or already updated',
+                ], 200);
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'registered_banner updated to 1',
+                'data' => ['registered_banner' => 1],
+            ], 200);
+
+        } catch (\Firebase\JWT\ExpiredException $e) {
+            return response()->json(['message' => 'Token expired'], 401);
+        } catch (\UnexpectedValueException $e) {
+            return response()->json(['message' => 'Invalid token'], 401);
+        } catch (\Exception $e) {
+            Log::error('setRegisteredBanner error: '.$e->getMessage());
+            return response()->json(['message' => 'Something went wrong'], 500);
         }
     }
 
@@ -193,7 +327,7 @@ class APIController extends Controller
             // Ambil data user dari tabel users
             $user = DB::table('users')
                 ->where('uid', $uid)
-                ->select('id', 'uid', 'name', 'phone_email', 'referral', 'profile', 'level', 'credibility', 'membership', 'network_address', 'currency', 'wallet_address', 'created_at', 'updated_at')
+                ->select('id', 'uid', 'name', 'phone_email', 'email_only','referral', 'profile', 'level', 'credibility', 'membership', 'network_address', 'currency', 'wallet_address', 'created_at', 'updated_at')
                 ->first();
     
             if (!$user) {
@@ -296,44 +430,51 @@ class APIController extends Controller
                 'message' => 'Token is missing',
             ], 401);
         }
-    
+
         try {
             $secretKey = config('jwt.secret');
-            $decoded = JWT::decode(str_replace('Bearer ', '', $token), new Key($secretKey, 'HS256'));
-            $uid = $decoded->uid;
-    
+            $decoded   = JWT::decode(str_replace('Bearer ', '', $token), new Key($secretKey, 'HS256'));
+            $uid       = $decoded->uid;
+
             $user = DB::table('users')
                 ->where('uid', $uid)
                 ->select('id', 'uid', 'name', 'phone_email', 'profile')
                 ->first();
-    
+
             if (!$user) {
                 return response()->json([
-                    'status' => 'error',
+                    'status'  => 'error',
                     'message' => 'User not found',
                 ], 404);
             }
-    
+
             $infoUser = DB::table('finance_users')
                 ->where('id_users', $user->id)
-                ->select('saldo','saldo_beku', 'komisi', 'withdrawal_password', 'temp_balance', 'price_akhir', 'profit_akhir')
+                ->select('saldo', 'saldo_beku', 'komisi', 'withdrawal_password', 'temp_balance', 'price_akhir', 'profit_akhir')
                 ->first();
-    
+
+            // --- Tambahan: ambil akumulasi bonus terdaftar (registered_bonus) untuk user ini
+            $registeredBonusTotal = (float) DB::table('registered_bonus')
+                ->where('id_users', $user->id)
+                ->sum('total_bonus');
+
             return response()->json([
-                'status' => 'success',
+                'status'  => 'success',
                 'message' => 'Data retrieved successfully',
-                'data' => [
-                    'user' => $user,
-                    'info_user' => $infoUser,
+                'data'    => [
+                    'user'                    => $user,
+                    'info_user'               => $infoUser,
+                    'registered_bonus_total'  => $registeredBonusTotal, // <- tambahan
                 ],
             ]);
         } catch (\Exception $e) {
             return response()->json([
-                'status' => 'error',
+                'status'  => 'error',
                 'message' => 'Invalid token or unauthorized',
             ], 401);
         }
     }
+
     
     public function bindWallet(Request $request)
     {

@@ -10,6 +10,8 @@ use Carbon\Carbon;
 Route::post('/login', [APIController::class, 'login']);
 Route::post('/register', [APIController::class, 'register']);
 Route::get('/get-profile-data', [APIController::class, 'getProfileData']);
+Route::get('/banner', [APIController::class, 'getBannerData']);
+Route::patch('/banner/register', [APIController::class, 'setRegisteredBanner']);
 Route::post('/bind-wallet', [APIController::class, 'bindWallet']);
 Route::get('/get-bind-wallet', [APIController::class, 'getBindWallet']);
 Route::post('/request-withdrawal', [APIController::class, 'requestWithdrawal']);

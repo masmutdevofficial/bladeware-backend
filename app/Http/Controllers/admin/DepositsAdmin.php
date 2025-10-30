@@ -10,32 +10,61 @@ use Illuminate\Support\Facades\Storage;
 
 class DepositsAdmin extends Controller
 {
-    public function index(Request $request)
-    {
-        $query = DB::table('deposit_users')
-            ->join('users', 'deposit_users.id_users', '=', 'users.id')
-            ->select('deposit_users.*', 'users.name')
-            ->orderBy('deposit_users.created_at', 'desc');
-        
-        // Filter tanggal
-        if ($request->has(['start_date', 'end_date']) && $request->start_date && $request->end_date) {
-            $query->whereBetween('deposit_users.created_at', [
-                $request->start_date . ' 00:00:00',
-                $request->end_date . ' 23:59:59'
-            ]);
-        }
-    
-        if ($request->has('search') && $request->search !== null) {
-            $keyword = '%' . $request->search . '%';
-            $query->where('users.name', 'like', $keyword);
-        }
-    
-        $perPage = $request->input('per_page', 10); // default 10
-        $deposits = $query->orderBy('created_at', 'desc')->paginate($perPage)->withQueryString();
-        $dataUser = DB::table('users')->select('id', 'name')->get();
-    
-        return view('admin.deposit', compact('deposits', 'dataUser'));
-    }
+public function index(Request $request)
+{
+    $hasDate   = $request->has(['start_date','end_date']) && $request->start_date && $request->end_date;
+    $start     = $hasDate ? $request->start_date . ' 00:00:00' : null;
+    $end       = $hasDate ? $request->end_date   . ' 23:59:59' : null;
+    $hasSearch = $request->filled('search');
+    $keyword   = $hasSearch ? ('%'.$request->search.'%') : null;
+    $perPage   = (int) $request->input('per_page', 10);
+
+    // Deposit asli
+    $qDeposit = DB::table('deposit_users')
+        ->join('users', 'deposit_users.id_users', '=', 'users.id')
+        ->select([
+            'deposit_users.id',
+            'deposit_users.id_users',
+            'users.name',
+            'deposit_users.amount',
+            'deposit_users.category_deposit',
+            'deposit_users.created_at',
+            'deposit_users.status', // <-- tambahkan
+        ]);
+
+    if ($hasDate)   $qDeposit->whereBetween('deposit_users.created_at', [$start, $end]);
+    if ($hasSearch) $qDeposit->where('users.name', 'like', $keyword);
+
+    // Welcome Bonus dari registered_bonus (status = 1)
+    $qWelcome = DB::table('registered_bonus')
+        ->join('users', 'registered_bonus.id_users', '=', 'users.id')
+        ->select([
+            DB::raw("CONCAT('wb_', registered_bonus.id) as id"),
+            'registered_bonus.id_users',
+            'users.name',
+            DB::raw('15 as amount'),
+            DB::raw("'Welcome Bonus' as category_deposit"),
+            'registered_bonus.created_at',
+            DB::raw('1 as status'), // <-- set 1 untuk welcome bonus
+        ]);
+
+    if ($hasDate)   $qWelcome->whereBetween('registered_bonus.created_at', [$start, $end]);
+    if ($hasSearch) $qWelcome->where('users.name', 'like', $keyword);
+
+    // UNION + paginate
+    $union = $qDeposit->unionAll($qWelcome);
+
+    $deposits = DB::query()
+        ->fromSub($union, 't')
+        ->orderBy('t.created_at', 'desc')
+        ->paginate($perPage)
+        ->withQueryString();
+
+    $dataUser = DB::table('users')->select('id', 'name')->get();
+
+    return view('admin.deposit', compact('deposits', 'dataUser'));
+}
+
 
 
     public function addDeposits(Request $request)
