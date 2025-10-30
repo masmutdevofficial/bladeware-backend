@@ -847,48 +847,122 @@ class APIController extends Controller
         }
     }
 
-    public function getFinance(Request $request)
-    {
-        $token = $request->header('Authorization');
-        if (!$token) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Token is missing',
-            ], 401);
-        }
-    
-        try {
-            $secretKey = config('jwt.secret');
-            $decoded = JWT::decode(str_replace('Bearer ', '', $token), new Key($secretKey, 'HS256'));
-            $userId = $decoded->sub;
-    
-            // Ambil semua data deposit untuk user ini
-            $deposits = DB::table('deposit_users')
-                ->where('id_users', $userId)
-                ->orderByDesc('created_at')
-                ->get();
-    
-            // Ambil semua data withdrawal untuk user ini
-            $withdrawals = DB::table('withdrawal_users')
-                ->where('id_users', $userId)
-                ->orderByDesc('created_at')
-                ->get();
-    
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Finance data retrieved successfully',
-                'data' => [
-                    'deposits' => $deposits,
-                    'withdrawals' => $withdrawals,
-                ],
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Invalid token or unauthorized',
-            ], 401);
-        }
+public function getFinance(Request $request)
+{
+    $token = $request->header('Authorization');
+    if (!$token) {
+        return response()->json([
+            'status'  => 'error',
+            'message' => 'Token is missing',
+        ], 401);
     }
+
+    try {
+        $secretKey = config('jwt.secret');
+        $decoded   = JWT::decode(str_replace('Bearer ', '', $token), new Key($secretKey, 'HS256'));
+        $userId    = $decoded->sub;
+
+        // Ambil semua data deposit untuk user ini
+        $deposits = DB::table('deposit_users')
+            ->where('id_users', $userId)
+            ->orderByDesc('created_at')
+            ->get();
+
+        // Ambil semua data withdrawal untuk user ini
+        $withdrawals = DB::table('withdrawal_users')
+            ->where('id_users', $userId)
+            ->orderByDesc('created_at')
+            ->get();
+
+        // === Tambahan: total Welcome Bonus dari registered_bonus ===
+        $welcomeBonusTotal = (float) DB::table('registered_bonus')
+            ->where('id_users', $userId)
+            ->sum('total_bonus');
+
+        // (opsional) tanggal bonus terakhir, jika mau ditampilkan
+        $welcomeBonusLastAt = DB::table('registered_bonus')
+            ->where('id_users', $userId)
+            ->max('updated_at');
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Finance data retrieved successfully',
+            'data'    => [
+                'deposits'          => $deposits,
+                'withdrawals'       => $withdrawals,
+                'welcome_bonus'     => [
+                    'label'           => 'Welcome Bonus',
+                    'amount'          => $welcomeBonusTotal,
+                    'last_awarded_at' => $welcomeBonusLastAt, // boleh diabaikan di FE jika tidak dipakai
+                ],
+            ],
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status'  => 'error',
+            'message' => 'Invalid token or unauthorized',
+        ], 401);
+    }
+}
+
+public function getMembership(Request $request)
+{
+    $token = $request->header('Authorization');
+    if (!$token) {
+        return response()->json([
+            'status'  => 'error',
+            'message' => 'Token is missing',
+        ], 401);
+    }
+
+    try {
+        $secretKey = config('jwt.secret');
+        $jwt      = str_replace('Bearer ', '', $token);
+        $decoded  = JWT::decode($jwt, new Key($secretKey, 'HS256'));
+
+        // Ambil user berdasar token: utamakan sub (id), fallback ke uid
+        $user = null;
+        if (isset($decoded->sub)) {
+            $user = DB::table('users')
+                ->where('id', $decoded->sub)
+                ->select('id', 'membership')
+                ->first();
+        } elseif (isset($decoded->uid)) {
+            $user = DB::table('users')
+                ->where('uid', $decoded->uid)
+                ->select('id', 'membership')
+                ->first();
+        }
+
+        if (!$user) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'User not found',
+            ], 404);
+        }
+
+        // Sanitasi nilai membership ke salah satu enum yang valid
+        $allowed = ['Normal', 'Gold', 'Platinum', 'Crown'];
+        $membership = $user->membership ?? 'Normal';
+        if (!in_array($membership, $allowed, true)) {
+            $membership = 'Normal';
+        }
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Membership retrieved successfully',
+            'data'    => [
+                'membership' => $membership,
+            ],
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status'  => 'error',
+            'message' => 'Invalid token or unauthorized',
+        ], 401);
+    }
+}
+
     
     public function getProduk(Request $request)
     {
