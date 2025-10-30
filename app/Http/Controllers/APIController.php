@@ -1005,7 +1005,7 @@ class APIController extends Controller
             if ($tugasSekarang <= 0) {
                 if ((int) $positionSet === 3) {
                     return response()->json([
-                        'message' => "You've Reached Maximum  3 Sets Daily Data",
+                        'message' => "You’ve Reached Your Daily Limit of 3 Sets Data",
                     ], 422);
                 }
 
