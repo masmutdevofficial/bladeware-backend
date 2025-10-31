@@ -188,6 +188,69 @@ class APIController extends Controller
         }
     }
 
+    public function uploadAvatar(Request $request)
+    {
+        // Ambil token JWT dari header
+        $authHeader = $request->header('Authorization');
+        if (!$authHeader) {
+            return response()->json(['status' => 'error', 'message' => 'Token is missing'], 401);
+        }
+
+        try {
+            $secretKey = config('jwt.secret');
+            $token     = str_replace('Bearer ', '', $authHeader);
+            $decoded   = JWT::decode($token, new Key($secretKey, 'HS256'));
+
+            // Ambil user id dari claim 'sub' (fallback ke 'uid' jika perlu)
+            $userId = $decoded->sub ?? null;
+            if (!$userId) {
+                return response()->json(['status' => 'error', 'message' => 'Invalid token payload'], 401);
+            }
+        } catch (\Throwable $e) {
+            return response()->json(['status' => 'error', 'message' => 'Invalid token or unauthorized'], 401);
+        }
+
+        // Validasi file
+        $request->validate([
+            'profile' => 'required|image|mimes:jpeg,jpg,png,webp|max:2048', // max 2MB
+        ]);
+
+        // Pastikan user ada
+        $user = DB::table('users')->where('id', $userId)->select('id','profile')->first();
+        if (!$user) {
+            return response()->json(['status' => 'error', 'message' => 'User not found'], 404);
+        }
+
+        // Simpan file ke storage/app/public/profiles
+        $path = $request->file('profile')->store('profiles', 'public');
+
+        // Opsional: hapus file lama jika ada dan berada di disk public
+        if (!empty($user->profile) && Storage::disk('public')->exists($user->profile)) {
+            try {
+                Storage::disk('public')->delete($user->profile);
+            } catch (\Throwable $e) {
+                // diamkan saja; tidak menghalangi proses update
+            }
+        }
+
+        // Update DB
+        DB::table('users')->where('id', $userId)->update([
+            'profile'    => $path,
+            'updated_at' => now(),
+        ]);
+
+        // URL publik (butuh "php artisan storage:link" sekali saja)
+        $publicUrl = asset('storage/'.$path);
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Avatar uploaded successfully',
+            'data'    => [
+                'profile'     => $path,
+                'profile_url' => $publicUrl,
+            ],
+        ], 201);
+    }
 
     public function getBannerData(Request $request)
     {
@@ -307,119 +370,138 @@ class APIController extends Controller
 
     public function getProfileData(Request $request)
     {
-        // Validasi token dalam header
         $token = $request->header('Authorization');
         if (!$token) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Token is missing',
-            ], 401);
+            return response()->json(['status'=>'error','message'=>'Token is missing'], 401);
         }
-    
-        try {
-            // Decode token
-            $secretKey = config('jwt.secret');
-            $decoded = JWT::decode(str_replace('Bearer ', '', $token), new Key($secretKey, 'HS256'));
-    
-            // Ambil uid dari payload
-            $uid = $decoded->uid;
-    
-            // Ambil data user dari tabel users
-            $user = DB::table('users')
-                ->where('uid', $uid)
-                ->select('id', 'uid', 'name', 'phone_email', 'email_only','referral', 'profile', 'level', 'credibility', 'membership', 'network_address', 'currency', 'wallet_address', 'created_at', 'updated_at')
-                ->first();
-    
-            if (!$user) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'User not found',
-                ], 404);
-            }
-    
-            // Ambil data dari tabel info_users berdasarkan id user
-            $infoUser = DB::table('finance_users')
-                ->where('id_users', $user->id)
-                ->select('saldo', 'komisi', 'withdrawal_password')
-                ->first();
-    
-            // Kembalikan data dalam format JSON
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Data retrieved successfully',
-                'data' => [
-                    'user' => $user,
-                    'info_user' => $infoUser,
-                ],
-            ]);
-        } catch (\Exception $e) {
-            // Tangkap error, misalnya token tidak valid
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Invalid token or unauthorized',
-            ], 401);
-        }
-    }
-    
-    public function getDataBoost(Request $request)
-    {
-        $token = $request->header('Authorization');
-        if (!$token) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Token is missing',
-            ], 401);
-        }
-    
+
         try {
             $secretKey = config('jwt.secret');
-            $decoded = JWT::decode(str_replace('Bearer ', '', $token), new Key($secretKey, 'HS256'));
-            $uid = $decoded->uid;
-    
+            $decoded   = \Firebase\JWT\JWT::decode(str_replace('Bearer ', '', $token), new \Firebase\JWT\Key($secretKey, 'HS256'));
+            $uid       = $decoded->uid;
+
             $user = DB::table('users')
                 ->where('uid', $uid)
-                ->select('id', 'uid', 'name', 'phone_email', 'profile')
+                ->select('id','uid','name','phone_email','email_only','referral','profile','level','credibility','membership','network_address','currency','wallet_address','created_at','updated_at')
                 ->first();
-    
+
             if (!$user) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'User not found',
-                ], 404);
+                return response()->json(['status'=>'error','message'=>'User not found'], 404);
             }
-    
-            $infoUser = DB::table('finance_users')
-                ->where('id_users', $user->id)
-                ->select('saldo','saldo_beku', 'komisi', 'withdrawal_password', 'temp_balance', 'price_akhir', 'profit_akhir')
-                ->first();
-    
-            if ($infoUser) {
-                $calculatedSaldo = 0;
-    
-                if (!empty($infoUser->price_akhir) && !empty($infoUser->profit_akhir)) {
-                    $calculatedSaldo = round($infoUser->price_akhir + $infoUser->profit_akhir, 2);
+
+            // Bangun URL publik untuk avatar
+            $profileUrl = null;
+            if (!empty($user->profile)) {
+                if (str_starts_with($user->profile, 'http://') || str_starts_with($user->profile, 'https://') || str_starts_with($user->profile, '//')) {
+                    $profileUrl = $user->profile; // jika sudah URL penuh
                 } else {
-                    $calculatedSaldo = round($infoUser->saldo, 2);
+                    $profileUrl = asset('storage/' . ltrim($user->profile, '/'));
                 }
-    
-                $infoUser->saldo = $calculatedSaldo; // Update saldo yang dikirim
             }
-    
+            $user->profile_url = $profileUrl;
+
+            $infoUser = DB::table('finance_users')
+                ->where('id_users', $user->id)
+                ->select('saldo','komisi','withdrawal_password')
+                ->first();
+
             return response()->json([
-                'status' => 'success',
+                'status'  => 'success',
                 'message' => 'Data retrieved successfully',
-                'data' => [
-                    'user' => $user,
+                'data'    => [
+                    'user'      => $user,
                     'info_user' => $infoUser,
                 ],
             ]);
         } catch (\Exception $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Invalid token or unauthorized',
-            ], 401);
+            return response()->json(['status'=>'error','message'=>'Invalid token or unauthorized'], 401);
         }
     }
+
+    
+public function getDataBoost(Request $request)
+{
+    $token = $request->header('Authorization');
+    if (!$token) {
+        return response()->json([
+            'status'  => 'error',
+            'message' => 'Token is missing',
+        ], 401);
+    }
+
+    try {
+        $secretKey = config('jwt.secret');
+        $decoded   = \Firebase\JWT\JWT::decode(
+            str_replace('Bearer ', '', $token),
+            new \Firebase\JWT\Key($secretKey, 'HS256')
+        );
+        $uid = $decoded->uid;
+
+        // Ambil user
+        $user = DB::table('users')
+            ->where('uid', $uid)
+            ->select('id','uid','name','phone_email','profile')
+            ->first();
+
+        if (!$user) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'User not found',
+            ], 404);
+        }
+
+        // Bangun URL publik untuk avatar
+        $profileUrl = null;
+        if (!empty($user->profile)) {
+            $p = ltrim($user->profile, '/');
+            // Jika sudah http(s), pakai apa adanya
+            if (str_starts_with($p, 'http://') || str_starts_with($p, 'https://')) {
+                $profileUrl = $p;
+            } else {
+                // profiles/... -> /storage/profiles/...
+                $profileUrl = asset('storage/'.$p);
+            }
+        }
+        // sisipkan ke objek
+        $user->profile_url = $profileUrl;
+
+        // Ambil info finance
+        $infoUser = DB::table('finance_users')
+            ->where('id_users', $user->id)
+            ->select('saldo','saldo_beku','komisi','withdrawal_password','temp_balance','price_akhir','profit_akhir')
+            ->first();
+
+        if ($infoUser) {
+            $priceAkhir  = (float)($infoUser->price_akhir  ?? 0);
+            $profitAkhir = (float)($infoUser->profit_akhir ?? 0);
+            $saldoDb     = (float)($infoUser->saldo        ?? 0);
+
+            // Jika ada nilai > 0 pada price/profit akhir, pakai itu; selainnya pakai saldo DB
+            if ($priceAkhir > 0 || $profitAkhir > 0) {
+                $calculatedSaldo = round($priceAkhir + $profitAkhir, 2);
+            } else {
+                $calculatedSaldo = round($saldoDb, 2);
+            }
+
+            $infoUser->saldo = $calculatedSaldo;
+        }
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Data retrieved successfully',
+            'data'    => [
+                'user'      => $user,
+                'info_user' => $infoUser,
+            ],
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status'  => 'error',
+            'message' => 'Invalid token or unauthorized',
+        ], 401);
+    }
+}
+
 
     public function getDataBoostApps(Request $request)
     {

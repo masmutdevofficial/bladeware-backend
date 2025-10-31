@@ -25,6 +25,8 @@ Route::post('/submit-produk', [APIController::class, 'submitProduk']);
 Route::get('/finance-boost', [APIController::class, 'financeBoost']);
 Route::get('/get-data-boost-apps', [APIController::class, 'getDataBoostApps']);
 Route::get('/get-membership', [APIController::class, 'getMembership']);
+Route::post('/upload-avatar', [APIController::class, 'uploadAvatar']);
+
 // Combination API for apps
 Route::get('/user-combinations', [APIController::class, 'getUserCombinations']);
 Route::post('/user-combinations', [APIController::class, 'updateUserCombinations']);
