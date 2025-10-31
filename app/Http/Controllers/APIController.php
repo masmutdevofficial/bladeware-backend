@@ -575,89 +575,161 @@ class APIController extends Controller
         }
     }
     
-    public function requestWithdrawal(Request $request)
-    {
-        $wallet_address = $request->input('wallet_address');
-        $network = $request->input('network');
-        $currency = $request->input('currency');
-        $withdrawal_password = $request->input('withdrawal_password');
-        $amount = $request->input('amount');
-    
-        if (!$wallet_address || !is_string($wallet_address)) {
-            return response()->json(['error' => 'Wallet Address Required'], 400);
-        }
-    
-        if (!$network || !is_string($network)) {
-            return response()->json(['error' => 'Network Address Required'], 400);
-        }
-    
-        if (!$currency || !is_string($currency)) {
-            return response()->json(['error' => 'Currency Required'], 400);
-        }
-    
-        if (!$withdrawal_password || !is_string($withdrawal_password)) {
-            return response()->json(['error' => 'Withdrawal Password Required'], 400);
-        }
-    
-        if (!$amount) {
-            return response()->json(['error' => 'Amount Required'], 400);
-        }
-    
-        if (strtoupper($currency) === 'USDC' && $amount < 100) {
-            return response()->json(['error' => 'Minimum withdrawal for USDC is 100'], 400);
-        }
-    
-        // JWT check
-        $jwtToken = $request->header('Authorization');
-        if (!$jwtToken) {
-            return response()->json(['error' => 'JWT Token tidak ditemukan'], 401);
-        }
-    
-        try {
-            $secretKey = config('jwt.secret');
-            $decoded = JWT::decode(str_replace('Bearer ', '', $jwtToken), new Key($secretKey, 'HS256'));
-            $userId = $decoded->sub;
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'Token tidak valid'], 401);
-        }
-    
-        $financeUser = DB::table('finance_users')->where('id_users', $userId)->first();
-    
-        if (!$financeUser) {
-            return response()->json(['error' => 'Finance User tidak ditemukan'], 404);
-        }
-    
-        if ($financeUser->withdrawal_password !== $withdrawal_password) {
-            return response()->json(['error' => 'Your Withdrawal Password Not Match'], 403);
-        }
-    
-        $today = now()->startOfDay();
-        $alreadyWithdrawn = DB::table('withdrawal_users')
-            ->where('id_users', $userId)
-            ->whereDate('created_at', '=', $today)
-            ->exists();
-    
-        if ($alreadyWithdrawn) {
-            return response()->json([
-                'error' => 'You have already made a withdrawal request today. Please try again tomorrow.'
-            ], 403);
-        }
-    
-        DB::table('withdrawal_users')->insert([
-            'id_users' => $userId,
-            'wallet_address' => $wallet_address,
-            'network_address' => $network,
-            'currency' => $currency,
-            'amount' => $amount,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-    
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Withdrawal successfully!',
-        ], 201);
+public function requestWithdrawal(Request $request)
+{
+    $wallet_address       = $request->input('wallet_address');
+    $network              = $request->input('network');
+    $currency             = $request->input('currency');
+    $withdrawal_password  = $request->input('withdrawal_password');
+    $amount               = $request->input('amount');
+
+    if (!$wallet_address || !is_string($wallet_address)) {
+        return response()->json(['error' => 'Wallet Address Required'], 400);
     }
+    if (!$network || !is_string($network)) {
+        return response()->json(['error' => 'Network Address Required'], 400);
+    }
+    if (!$currency || !is_string($currency)) {
+        return response()->json(['error' => 'Currency Required'], 400);
+    }
+    if (!$withdrawal_password || !is_string($withdrawal_password)) {
+        return response()->json(['error' => 'Withdrawal Password Required'], 400);
+    }
+    if (!is_numeric($amount) || $amount <= 0) {
+        return response()->json(['error' => 'Amount Required'], 400);
+    }
+    if (strtoupper($currency) === 'USDC' && $amount < 100) {
+        return response()->json(['error' => 'Minimum withdrawal for USDC is 100'], 400);
+    }
+
+    $jwtToken = $request->header('Authorization');
+    if (!$jwtToken) {
+        return response()->json(['error' => 'JWT Token tidak ditemukan'], 401);
+    }
+
+    try {
+        $secretKey = config('jwt.secret');
+        $decoded   = JWT::decode(str_replace('Bearer ', '', $jwtToken), new Key($secretKey, 'HS256'));
+        $userId    = $decoded->sub;
+    } catch (\Exception $e) {
+        return response()->json(['error' => 'Token tidak valid'], 401);
+    }
+
+    // === BATAS JAM OPERASIONAL WD: 10:00 - 22:00 EST ===
+    // Gunakan America/New_York (menyesuaikan DST). Jika ingin EST tetap (tanpa DST), ganti jadi 'EST'.
+    $nowET   = Carbon::now('America/New_York');
+    $startET = $nowET->copy()->setTime(10, 0, 0);
+    $endET   = $nowET->copy()->setTime(22, 0, 0);
+
+    if ($nowET->lt($startET) || $nowET->gt($endET)) {
+        return response()->json([
+            'error' => 'Withdrawal is available between 10:00 and 22:00 EST.'
+        ], 403);
+    }
+
+    // Validasi membership / set berjalan + limit posisi
+    $userRow = DB::table('users')
+        ->where('id', $userId)
+        ->select('membership', 'position_set')
+        ->first();
+
+    if (!$userRow) {
+        return response()->json(['error' => 'User not found'], 404);
+    }
+
+    $limitMap = [
+        'Normal'   => 40,
+        'Gold'     => 50,
+        'Platinum' => 55,
+        'Crown'    => 55,
+    ];
+    $posisiSekarang  = (int)($limitMap[$userRow->membership ?? 'Normal'] ?? 40);
+    $posisiSetUser   = $userRow->position_set;
+
+    $posisiTugasSekarang = (int) (DB::table('transactions_users')
+        ->where('id_users', $userId)
+        ->where('set', $posisiSetUser)
+        ->orderByDesc('urutan')
+        ->value('urutan') ?? 0);
+
+    if ($posisiSekarang !== $posisiTugasSekarang) {
+        return response()->json(['error' => 'Please Complete Your Ongoing Data Set'], 403);
+    }
+
+    // Batasi 1x WD per hari
+    $alreadyWithdrawn = DB::table('withdrawal_users')
+        ->where('id_users', $userId)
+        ->whereDate('created_at', now())
+        ->exists();
+
+    if ($alreadyWithdrawn) {
+        return response()->json([
+            'error' => 'You have already made a withdrawal request today. Please try again tomorrow.'
+        ], 403);
+    }
+
+    // Transaksi DB: kunci saldo, cek password, kurangi saldo, simpan WD
+    try {
+        DB::transaction(function () use ($userId, $wallet_address, $network, $currency, $withdrawal_password, $amount) {
+            // Kunci baris finance_user
+            $financeUser = DB::table('finance_users')
+                ->where('id_users', $userId)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$financeUser) {
+                throw new \RuntimeException('Finance User tidak ditemukan');
+            }
+
+            // Cek password WD
+            if ($financeUser->withdrawal_password !== $withdrawal_password) {
+                throw new \RuntimeException('Your Withdrawal Password Not Match');
+            }
+
+            // Cek saldo cukup
+            if ((float)$financeUser->saldo < (float)$amount) {
+                throw new \RuntimeException('Insufficient Balance');
+            }
+
+            // Insert request WD
+            DB::table('withdrawal_users')->insert([
+                'id_users'        => $userId,
+                'wallet_address'  => $wallet_address,
+                'network_address' => $network,
+                'currency'        => $currency,
+                'amount'          => $amount,
+                'created_at'      => now(),
+                'updated_at'      => now(),
+            ]);
+
+            // Kurangi saldo sesuai amount
+            $newSaldo = (float)$financeUser->saldo - (float)$amount;
+            DB::table('finance_users')
+                ->where('id_users', $userId)
+                ->update([
+                    'saldo'      => $newSaldo,
+                    'updated_at' => now(),
+                ]);
+        });
+    } catch (\RuntimeException $re) {
+        $msg = $re->getMessage();
+        $code = match ($msg) {
+            'Your Withdrawal Password Not Match' => 403,
+            'Insufficient Balance'               => 400,
+            'Finance User tidak ditemukan'       => 404,
+            default                               => 400,
+        };
+        return response()->json(['error' => $msg], $code);
+    } catch (\Throwable $th) {
+        return response()->json(['error' => 'Withdrawal failed'], 500);
+    }
+
+    return response()->json([
+        'status'  => 'success',
+        'message' => 'Withdrawal successfully!',
+    ], 201);
+}
+
 
     public function changeLoginPassword(Request $request)
     {
@@ -1035,6 +1107,14 @@ public function getMembership(Request $request)
             $cekSaldo = $finance->saldo;
             $cekBeku  = $finance->saldo_beku;
 
+            // Jika saldo < 50 → tolak
+            if ($cekSaldo < 50) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Minimum 50 USDC Required!',
+                ], 400);
+            }
+
             // Aturan baru: jika saldo < 50 DAN saldo_beku < 0 → tolak
             if (($cekSaldo < 50 && $cekBeku < 0)) {
                 return response()->json([
@@ -1084,7 +1164,7 @@ public function getMembership(Request $request)
                 }
 
                 return response()->json([
-                    'message' => 'Please Contact Customer Service to Reset Your Next Data',
+                    'message' => 'Reset Required! Please Contact Customer Service',
                 ], 422);
             }
 

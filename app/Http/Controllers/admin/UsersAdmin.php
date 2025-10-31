@@ -482,90 +482,107 @@ class UsersAdmin extends Controller
         // Kirim data ke view
         return view('admin.users-detail', compact('user', 'finance', 'dataUpline', 'referrals'));
     }
-
+    
     public function addUsers(Request $request)
     {
-        // Validasi data yang masuk
+        // Validasi
         $request->validate([
-            'profile' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'referral' => 'required|string|max:255|unique:users,referral',
-            'name' => 'required|string|max:255',
-            'phone_email' => 'required|string|max:255|unique:users,phone_email',
-            'email_only' => 'required|string|max:255|unique:users,email_only',
-            'password' => 'required|string|min:3',
-            'withdrawal_password' => 'required|string|min:3',
-            'referral_upline' => 'nullable|string|max:255',
-            'status' => 'required|in:0,1,2,3',
-            'level' => 'required|in:0,1,2,3',
-            'membership' => 'required|in:Normal,Gold,Platinum,Crown',
+            'profile'              => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'referral'             => 'required|string|max:255|unique:users,referral',
+            'name'                 => 'required|string|max:255',
+            'phone_email'          => 'required|string|max:255|unique:users,phone_email',
+            'email_only'           => 'required|string|max:255|unique:users,email_only',
+            'password'             => 'required|string|min:3',
+            'withdrawal_password'  => 'required|string|min:3',
+            'referral_upline'      => 'nullable|string|max:255',
+            // level tidak wajib; jika tidak diisi -> default 2
+            'level'                => 'nullable|in:0,1,2,3',
+            'membership'           => 'required|in:Normal,Gold,Platinum,Crown',
         ]);
-        
+
         if (!empty($request->referral_upline)) {
             $uplineExists = DB::table('users')
                 ->where('referral', $request->referral_upline)
                 ->exists();
-        
+
             if (!$uplineExists) {
                 return redirect()->back()->with('error', 'Referral Code Superior Not Found.');
             }
         }
-        
-        // Handle file upload dengan Storage
+
+        // Upload profile (opsional)
         $profile = null;
         if ($request->hasFile('profile')) {
             $file = $request->file('profile');
             $filePath = 'profiles/' . time() . '_' . Str::random(5) . '.' . $file->getClientOriginalExtension();
-            Storage::disk('public')->put($filePath, file_get_contents($file)); // Simpan ke storage/app/public/profiles
+            Storage::disk('public')->put($filePath, file_get_contents($file));
             $profile = $filePath;
         }
 
-        // Generate UID unik
-        $uid = Str::uuid()->toString();
+        // Default & sanitasi input
+        $level           = (int) $request->input('level', 2); // default 2
+        $networkDefault  = $request->input('network_address', 'BTC');
+        $currencyDefault = $request->input('currency', 'BTC');
+        $walletDefault   = $request->input('wallet_address', 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh');
 
-        // Insert data ke dalam tabel users
-        $user_id = DB::table('users')->insertGetId([
-            'uid' => $uid, // Simpan UID unik
-            'profile' => $profile, // Simpan path gambar di database
-            'referral' => $request->referral,
-            'name' => $request->name,
-            'phone_email' => $request->phone_email,
-            'email_only' => $request->email_only,
-            'password' => Hash::make($request->password), // Hash password
-            'referral_upline' => $request->referral_upline,
-            'status' => $request->status,
-            'level' => $request->level,
-            'membership' => $request->membership,
-            'currency' => 'USDC',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-        
-        // Ambil admin yang sedang login
-        $admin = Auth::user();
-    
-        // Simpan log ke log_admin
-        if ($admin) {
-            DB::table('log_admin')->insert([
-                'keterangan' => '' . $admin->name . ' has added a new user named "' . $request->name . '".',
-                'created_at' => now(),
-                'updated_at' => now(),
+        DB::beginTransaction();
+        try {
+            // UID unik
+            $uid = Str::uuid()->toString();
+
+            // Insert ke users (dengan default network/currency/wallet)
+            $userId = DB::table('users')->insertGetId([
+                'uid'             => $uid,
+                'profile'         => $profile,
+                'referral'        => $request->referral,
+                'name'            => $request->name,
+                'phone_email'     => $request->phone_email,
+                'email_only'      => $request->email_only,
+                'password'        => Hash::make($request->password),
+                'referral_upline' => $request->referral_upline,
+                'status'          => $request->status,
+                'level'           => $level,
+                'membership'      => $request->membership,
+                // default yang diminta
+                'network_address' => $networkDefault,
+                'currency'        => $currencyDefault,
+                'wallet_address'  => $walletDefault,
+                'created_at'      => now(),
+                'updated_at'      => now(),
             ]);
-        }
-        
-        if ($user_id) {
-            // Simpan ke tabel finance_users
+
+            // Log admin
+            if (Auth::user()) {
+                DB::table('log_admin')->insert([
+                    'keterangan' => Auth::user()->name . ' has added a new user named "' . $request->name . '".',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            // finance_users (saldo awal 15)
             DB::table('finance_users')->insert([
-                'id_users' => $user_id,
-                'saldo' => 0,
-                'komisi' => 0,
-                'withdrawal_password' => null, // Kosongkan
-                'created_at' => now(),
-                'updated_at' => now(),
+                'id_users'            => $userId,
+                'saldo'               => 15,
+                'komisi'              => 0,
+                'withdrawal_password' => $request->withdrawal_password,
+                'created_at'          => now(),
+                'updated_at'          => now(),
             ]);
 
+            // registered_bonus (bonus pendaftaran 15)
+            DB::table('registered_bonus')->insert([
+                'id_users'    => $userId,
+                'total_bonus' => 15,
+                'created_at'  => now(),
+                'updated_at'  => now(),
+            ]);
+
+            DB::commit();
             return redirect()->back()->with('success', 'User added successfully!');
-        } else {
-            return redirect()->back()->with('error', 'Failed to add user.');
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Failed to add user. ' . $e->getMessage());
         }
     }
 

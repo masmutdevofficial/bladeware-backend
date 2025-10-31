@@ -246,8 +246,8 @@
                                         <div class="d-flex justify-content-between align-items-center flex-row mb-0 text-danger">
                                             <strong class="me-1 text-danger">Order Boost:</strong>{{ $user->task_done }}/{{ $user->task_limit }}
                                         </div>
-                                        <div class="d-flex justify-content-between align-items-center flex-row mb-0 text-danger" style="color: red;">
-                                            <strong class="me-1" style="color: red;">Current Set:</strong> {{ $user->display_set ?? '-' }}
+                                        <div class="d-flex justify-content-between align-items-center flex-row mb-0 text-danger" >
+                                            <strong class="me-1" >Current Set:</strong> {{ $user->display_set ?? '-' }}
                                         </div>
                                         @php
                                             $ids = $user->display_combination_products ?? [];
@@ -639,8 +639,8 @@
 
                             <!-- Name -->
                             <div class="form-group">
-                                <label for="name">Full Name</label>
-                                <input type="text" class="form-control" id="name" name="name" placeholder="Enter Full Name" required>
+                                <label for="name">User Name</label>
+                                <input type="text" class="form-control" id="name" name="name" placeholder="Enter User Name" required>
                             </div>
 
                             <!-- Email / Phone Number -->
@@ -684,9 +684,9 @@
 
                             <!-- Level -->
                             <div class="form-group">
-                                <label for="level">Level</label>
-                                <select class="form-control" id="level" name="level" required>
-                                    <option value="">Choose Level</option>
+                                <label for="level">Type Account</label>
+                                <select class="form-control" id="level" name="level">
+                                    <option value="">Choose Type</option>
                                     <option value="3">Operator</option>
                                     <option value="1" selected>Members</option>
                                     <option value="2">Training Account</option>
