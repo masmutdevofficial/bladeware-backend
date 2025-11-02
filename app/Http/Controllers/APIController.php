@@ -680,8 +680,8 @@ public function requestWithdrawal(Request $request)
     if (!is_numeric($amount) || $amount <= 0) {
         return response()->json(['error' => 'Amount Required'], 400);
     }
-    if (strtoupper($currency) === 'USDC' && $amount < 100) {
-        return response()->json(['error' => 'Minimum withdrawal for USDC is 100'], 400);
+    if (strtoupper($currency) && $amount < 1) {
+        return response()->json(['error' => 'Minimum withdrawal for USDC is 1'], 400);
     }
 
     $jwtToken = $request->header('Authorization');
@@ -707,35 +707,6 @@ public function requestWithdrawal(Request $request)
         return response()->json([
             'error' => 'Withdrawal is available between 10:00 and 22:00 EST.'
         ], 403);
-    }
-
-    // Validasi membership / set berjalan + limit posisi
-    $userRow = DB::table('users')
-        ->where('id', $userId)
-        ->select('membership', 'position_set')
-        ->first();
-
-    if (!$userRow) {
-        return response()->json(['error' => 'User not found'], 404);
-    }
-
-    $limitMap = [
-        'Normal'   => 40,
-        'Gold'     => 50,
-        'Platinum' => 55,
-        'Crown'    => 55,
-    ];
-    $posisiSekarang  = (int)($limitMap[$userRow->membership ?? 'Normal'] ?? 40);
-    $posisiSetUser   = $userRow->position_set;
-
-    $posisiTugasSekarang = (int) (DB::table('transactions_users')
-        ->where('id_users', $userId)
-        ->where('set', $posisiSetUser)
-        ->orderByDesc('urutan')
-        ->value('urutan') ?? 0);
-
-    if ($posisiSekarang !== $posisiTugasSekarang) {
-        return response()->json(['error' => 'Please Complete Your Ongoing Data Set'], 403);
     }
 
     // Batasi 1x WD per hari
@@ -771,6 +742,35 @@ public function requestWithdrawal(Request $request)
             // Cek saldo cukup
             if ((float)$financeUser->saldo < (float)$amount) {
                 throw new \RuntimeException('Insufficient Balance');
+            }
+
+            // Validasi membership / set berjalan + limit posisi
+            $userRow = DB::table('users')
+                ->where('id', $userId)
+                ->select('membership', 'position_set')
+                ->first();
+
+            if (!$userRow) {
+                return response()->json(['error' => 'User not found'], 404);
+            }
+
+            $limitMap = [
+                'Normal'   => 40,
+                'Gold'     => 50,
+                'Platinum' => 55,
+                'Crown'    => 55,
+            ];
+            $posisiSekarang  = (int)($limitMap[$userRow->membership ?? 'Normal'] ?? 40);
+            $posisiSetUser   = $userRow->position_set;
+
+            $posisiTugasSekarang = (int) (DB::table('transactions_users')
+                ->where('id_users', $userId)
+                ->where('set', $posisiSetUser)
+                ->orderByDesc('urutan')
+                ->value('urutan') ?? 0);
+
+            if ($posisiSekarang !== $posisiTugasSekarang) {
+                return response()->json(['error' => 'Please Complete Your Ongoing Data Set'], 403);
             }
 
             // Insert request WD
@@ -906,41 +906,24 @@ public function requestWithdrawal(Request $request)
         $token = $request->header('Authorization');
         if (!$token) {
             return response()->json([
-                'status' => 'error',
+                'status'  => 'error',
                 'message' => 'Token is missing',
             ], 401);
         }
-    
+
         try {
             $secretKey = config('jwt.secret');
-            $decoded = JWT::decode(str_replace('Bearer ', '', $token), new Key($secretKey, 'HS256'));
-            $userId = $decoded->sub;
-    
-            $user = DB::table('users')->where('id', $userId)->first();
-    
-            if (!$user) {
+            $decoded   = JWT::decode(str_replace('Bearer ', '', $token), new Key($secretKey, 'HS256'));
+            $userId    = $decoded->sub;
+
+            $userExists = DB::table('users')->where('id', $userId)->exists();
+            if (!$userExists) {
                 return response()->json([
-                    'status' => 'error',
+                    'status'  => 'error',
                     'message' => 'User not found',
                 ], 404);
             }
-    
-            // Boosted ratio normal
-            $boostedRatioNormal = [
-                'Normal' => 0.5,
-                'Gold' => 0.6,
-                'Platinum' => 0.8,
-                'Crown' => 1.0,
-            ];
-    
-            // Boosted ratio combination
-            $boostedRatioCombination = [
-                'Normal' => 5,
-                'Gold' => 6,
-                'Platinum' => 8,
-                'Crown' => 10,
-            ];
-    
+
             $datatransaksi = DB::table('transactions_users')
                 ->join('products', 'transactions_users.id_products', '=', 'products.id')
                 ->where('transactions_users.id_users', $userId)
@@ -955,51 +938,44 @@ public function requestWithdrawal(Request $request)
                     'transactions_users.status',
                     'transactions_users.created_at',
                     'transactions_users.updated_at',
+                    // ambil langsung dari kolom ratio_profit dan alias jadi boosted_ratio
+                    'transactions_users.ratio_profit as boosted_ratio',
                     'products.product_name',
                     'products.product_image'
                 )
-                ->get()
-                ->map(function ($item) use ($user, $boostedRatioNormal, $boostedRatioCombination) {
-                    if ($item->type === 'combination') {
-                        $boostedRatio = $boostedRatioCombination[$user->membership] ?? 5;
-                    } else {
-                        $boostedRatio = $boostedRatioNormal[$user->membership] ?? 0.5;
-                    }
-    
-                    $item->boosted_ratio = $boostedRatio . '%';
-                    return $item;
-                });
-    
+                ->get();
+
             if ($datatransaksi->isEmpty()) {
                 return response()->json([
-                    'status' => 'error',
+                    'status'  => 'error',
                     'message' => 'Transaction not found',
                 ], 404);
             }
-    
+
             return response()->json([
-                'status' => 'success',
+                'status'  => 'success',
                 'message' => 'Data retrieved successfully',
-                'data' => $datatransaksi,
+                'data'    => $datatransaksi,
             ]);
         } catch (\Firebase\JWT\ExpiredException $e) {
             return response()->json([
-                'status' => 'error',
+                'status'  => 'error',
                 'message' => 'Token expired',
             ], 401);
         } catch (\UnexpectedValueException $e) {
             return response()->json([
-                'status' => 'error',
+                'status'  => 'error',
                 'message' => 'Invalid token',
             ], 401);
         } catch (\Exception $e) {
             Log::error('getAppsRecords error: ' . $e->getMessage());
             return response()->json([
-                'status' => 'error',
+                'status'  => 'error',
                 'message' => 'Something went wrong',
             ], 500);
         }
     }
+
 
 public function getFinance(Request $request)
 {
@@ -1189,8 +1165,8 @@ public function getMembership(Request $request)
             $cekSaldo = $finance->saldo;
             $cekBeku  = $finance->saldo_beku;
 
-            // Jika saldo < 50 → tolak
-            if ($cekSaldo < 50) {
+            // Jika saldo < 50 dan saldo_beku == 0 → Minimum 50 USDC Required
+            if (($cekSaldo < 50 && $cekBeku == 0)) {
                 return response()->json([
                     'status'  => 'error',
                     'message' => 'Minimum 50 USDC Required!',
@@ -1219,6 +1195,24 @@ public function getMembership(Request $request)
                 'Platinum' => 55,
                 'Crown'    => 55,
             ];
+
+            // === Tambahan: profit rate per membership ===
+            $profitRateMap = [
+                'Normal'   => ['normal' => 0.005, 'combo' => 0.05],  // 0.5% / 5%
+                'Gold'     => ['normal' => 0.006, 'combo' => 0.06],  // 0.6% / 6%
+                'Platinum' => ['normal' => 0.008, 'combo' => 0.08],  // 0.8% / 8%
+                'Crown'    => ['normal' => 0.010, 'combo' => 0.10],  // 1.0% / 10%
+            ];
+
+            $profitRateNormal = $profitRateMap[$membership]['normal'] ?? 0.005; // default Normal
+            $profitRateCombo  = $profitRateMap[$membership]['combo']  ?? 0.05;
+            
+            $formatPercent = function (float $rate): string {
+                $pct = $rate * 100;
+                // pakai presisi 3 lalu trim nol & titik
+                $str = rtrim(rtrim(number_format($pct, 3, '.', ''), '0'), '.');
+                return $str . '%';
+            };// default Normal
 
             // Default 0 jika membership di luar peta
             $sisaTugas = $limitMap[$membership] ?? 0;
@@ -1420,17 +1414,17 @@ public function getMembership(Request $request)
 
                     if ($product) {
                         // Skema persentase harga per urutan item di kombinasi
-                        // (0) 70%, (1) 75%, (2) 85%, default 70%
+                        // (0) 60%, (1) 65%, (2) 75%, default 60%
                         $percentage = match ($comboIndex) {
-                            0 => 0.70,
-                            1 => 0.75,
-                            2 => 0.85,
-                            default => 0.70,
+                            0 => 0.60,
+                            1 => 0.65,
+                            2 => 0.75,
+                            default => 0.60,
                         };
 
                         // Hitung price & profit item kombinasi
                         $unitPrice  = round($saldo * $percentage, 2);
-                        $unitProfit = round($unitPrice * 0.05, 2);
+                        $unitProfit = round($unitPrice * $profitRateCombo, 2);
 
                         // Kumpulkan item terpilih
                         $selectedProducts[] = (object) [
@@ -1455,6 +1449,7 @@ public function getMembership(Request $request)
                         'type'        => 'combination',
                         'price'       => $product->price,
                         'profit'      => $product->profit,
+                        'ratio_profit' => $formatPercent($profitRateCombo),
                         'status'      => 1,            // dianggap aktif/siap diproses
                         'urutan'      => $urutanTransaksi,  // semua item satu kelompok urutan yang sama
                         'created_at'  => now(),
@@ -1504,7 +1499,7 @@ public function getMembership(Request $request)
             if ($randomProduct) {
                 // Skema pricing normal: 45% dari saldo, profit 0.5%
                 $unitPrice  = round($saldo * 0.45, 2);
-                $unitProfit = round($unitPrice * 0.005, 3);
+                $unitProfit = round($unitPrice * $profitRateNormal, 3);
 
                 $product = (object) [
                     'id'            => $randomProduct->id,
@@ -1524,6 +1519,7 @@ public function getMembership(Request $request)
                     'type'        => 'normal',
                     'price'       => $product->price,
                     'profit'      => $product->profit,
+                    'ratio_profit' => $formatPercent($profitRateNormal),
                     'status'      => 1,
                     'urutan'      => $urutanTransaksi,
                     'created_at'  => now(),
