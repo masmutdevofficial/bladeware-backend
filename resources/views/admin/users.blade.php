@@ -199,7 +199,7 @@
                                         </a>
                                     </div>
                                     @endif
-                                    <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-black"><strong class="me-1">Name:</strong> {{ $user->name ?? 'N/A' }}</div>
+                                    <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-black"><strong class="me-1">User Name:</strong> {{ $user->name ?? 'N/A' }}</div>
                                     <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-black"><strong class="me-1">Phone Number:</strong> {{ $user->phone_email ?? 'N/A' }}</div>
                                     <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-black"><strong class="me-1">Email:</strong> {{ $user->email_only ?? 'N/A' }}</div>
                                     <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-black"><strong class="me-1">VIP Level:</strong> {{ $user->membership ?? 'N/A' }}</div>
@@ -397,7 +397,7 @@
                         
                                             <!-- Name -->
                                             <div class="form-group">
-                                                <label>Name</label>
+                                                <label>User Name</label>
                                                 <input type="text" class="form-control" name="name" value="{{ $user->name }}" required>
                                             </div>
                                             
@@ -443,7 +443,7 @@
                         
                                             <!-- Level -->
                                             <div class="form-group">
-                                                <label>Level</label>
+                                                <label>Type Account</label>
                                                 <select class="form-control" name="level">
                                                     <option value="3" {{ $user->level == 0 ? 'selected' : '' }}>Operator</option>
                                                     <option value="1" {{ $user->level == 1 ? 'selected' : '' }}>Member</option>
@@ -688,8 +688,8 @@
                                 <select class="form-control" id="level" name="level">
                                     <option value="">Choose Type</option>
                                     <option value="3">Operator</option>
-                                    <option value="1" selected>Members</option>
-                                    <option value="2">Training Account</option>
+                                    <option value="1">Members</option>
+                                    <option value="2" selected>Training Account</option>
                                 </select>
                             </div>
 

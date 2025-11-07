@@ -68,16 +68,65 @@ class WithdrawalsAdmin extends Controller
     public function editWithdrawals(Request $request, $id)
     {
         $request->validate([
-            'status' => 'required|integer',
+            'status' => 'required|integer|in:0,1,2', // 0=In Process, 1=Approved, 2=Rejected
         ]);
 
-        DB::table('withdrawal_users')->where('id', $id)->update([
-            'status' => $request->status,
-            'updated_at' => now(),
-        ]);
+        DB::transaction(function () use ($request, $id) {
+            // Lock withdrawal
+            $w = DB::table('withdrawal_users')
+                ->where('id', $id)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$w) {
+                abort(404, 'Withdrawal not found.');
+            }
+
+            $oldStatus = (int) $w->status;
+            $newStatus = (int) $request->status;
+
+            // Jika berubah menjadi Rejected (2) dan sebelumnya bukan Rejected → refund saldo
+            if ($newStatus === 2 && $oldStatus !== 2) {
+                $finance = DB::table('finance_users')
+                    ->where('id_users', $w->id_users)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$finance) {
+                    abort(404, 'Finance user not found.');
+                }
+
+                $newSaldo = (float) $finance->saldo + (float) $w->amount;
+
+                DB::table('finance_users')
+                    ->where('id_users', $w->id_users)
+                    ->update([
+                        'saldo'      => $newSaldo,
+                        'updated_at' => now(),
+                    ]);
+            }
+
+            // (Opsional) Jika sebelumnya Rejected dan diganti ke selain Rejected, dan kamu ingin “mencabut” refund:
+            // if ($oldStatus === 2 && $newStatus !== 2) {
+            //     $finance = DB::table('finance_users')->where('id_users', $w->id_users)->lockForUpdate()->first();
+            //     if (!$finance) abort(404, 'Finance user not found.');
+            //     $newSaldo = (float) $finance->saldo - (float) $w->amount;
+            //     if ($newSaldo < 0) abort(400, 'Saldo tidak mencukupi untuk revert.');
+            //     DB::table('finance_users')->where('id_users', $w->id_users)->update(['saldo' => $newSaldo, 'updated_at' => now()]);
+            // }
+
+            // Update status WD
+            DB::table('withdrawal_users')
+                ->where('id', $id)
+                ->update([
+                    'status'     => $newStatus,
+                    'updated_at' => now(),
+                ]);
+        });
 
         return redirect()->route('admin.withdrawals')->with('success', 'Withdrawal updated successfully.');
     }
+
 
     // Hapus deposit
     public function deleteWithdrawals($id)

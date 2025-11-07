@@ -1,57 +1,47 @@
 @extends('layouts.main')
 @section('customScript')
 <script>
-    // Fungsi untuk menangani Edit Modal
+    // Edit Modal
     $('#editModal').on('show.bs.modal', function(event) {
-        var button = $(event.relatedTarget); // Tombol yang diklik
-        var withdrawal = button.data('withdrawal'); // Ambil data produk dari tombol
+        var button = $(event.relatedTarget);          // tombol yang diklik
+        var withdrawal = button.data('withdrawal');   // object withdrawal dari data-*
 
-        // Isi form edit dengan data produk
+        // Set hidden id
         $('#edit_withdrawal_id').val(withdrawal.id);
-        $('#edit_currency').val(withdrawal.currency);
-        $('#edit_network_address').val(withdrawal.network_address);
-        $('#edit_wallet_address').val(withdrawal.wallet_address);
-        $('#edit_amount').val(withdrawal.amount);
-        $('#edit_status').val(withdrawal.status);
 
-        // Atur action form edit dengan ID produk
-        var formAction = "{{ route('admin.edit-withdrawals', ':id') }}";
-        formAction = formAction.replace(':id', withdrawal.id);
+        // Sinkronkan STATUS dengan aman (normalisasi ke string, clear dulu, lalu pilih)
+        var statusVal = String(withdrawal.status);
+        var $status = $('#edit_status');
+        $status.find('option').prop('selected', false);
+        $status.find('option[value="' + statusVal + '"]').prop('selected', true);
+        $status.trigger('change'); // kalau pakai plugin/select2 tetap kepilih
+
+        // Atur action form edit
+        var formAction = "{{ route('admin.edit-withdrawals', ':id') }}".replace(':id', withdrawal.id);
         $('#editForm').attr('action', formAction);
     });
 
-    // Fungsi untuk menangani Delete Modal
+    // Delete Modal (biarkan seperti sebelumnya)
     $('#confirmDeleteModal').on('show.bs.modal', function(event) {
         var button = $(event.relatedTarget);
-        var withdrawalId = button.data('id'); // Ambil ID dari tombol delete
-
-        // Simpan ID produk dalam input hidden
+        var withdrawalId = button.data('id');
         $('#deleteItemId').val(withdrawalId);
-
-        // Atur URL action delete
         $('#confirmDelete').data('id', withdrawalId);
     });
 
-    // Aksi konfirmasi hapus
     $('#confirmDelete').on('click', function() {
         var withdrawalId = $(this).data('id');
         $.ajax({
             url: '/admin/delete-withdrawals/' + withdrawalId,
             type: 'POST',
-            data: {
-                _token: '{{ csrf_token() }}'
-            },
-            success: function(response) {
-                location.reload(); // Refresh halaman setelah sukses
-            },
-            error: function(response) {
-                alert('Error deleting withdrawal.');
-            }
+            data: { _token: '{{ csrf_token() }}' },
+            success: function() { location.reload(); },
+            error: function() { alert('Error deleting withdrawal.'); }
         });
     });
 </script>
-
 @endsection
+
 
 @section('content')
 <style>
@@ -132,12 +122,22 @@
                             <td><span class="text-black">{{ $withdrawal->wallet_address }}</span></td>
                             <td><span class="text-black">{{ number_format($withdrawal->amount, 2, ',', '.') }}</span></td>
                             <td>
-                                @if($withdrawal->status == 1)
-                                    <span class="badge badge-success w-100" style="color:white!important;">Approved</span>
-                                @else
-                                    <span class="badge badge-danger w-100" style="color:white!important;">Rejected</span>
-                                @endif
+                                @switch((int)$withdrawal->status)
+                                    @case(0)
+                                        <span class="badge badge-warning w-100" style="color:white!important;">In Process</span>
+                                        @break
+                                    @case(1)
+                                        <span class="badge badge-success w-100" style="color:white!important;">Approved</span>
+                                        @break
+                                    @case(2)
+                                        <span class="badge badge-danger w-100" style="color:white!important;">Rejected</span>
+                                        @break
+                                    @default
+                                        <span class="badge badge-secondary w-100" style="color:white!important;">-</span>
+                                @endswitch
                             </td>
+
+
                             <td><span class="text-black">{{ $withdrawal->created_at }}</span></td>
                             <td>
                                 @if(Auth::user()->level == 0)
@@ -236,9 +236,9 @@
                             <div class="form-group">
                                 <label for="status">Status</label>
                                 <select class="form-control" id="status" name="status">
-                                    <option value="2">On Process</option>
+                                    <option value="0">In Process</option>
                                     <option value="1">Approved</option>
-                                    <option value="0">Rejected</option>
+                                    <option value="2">Rejected</option>
                                 </select>
                             </div>
 
@@ -270,9 +270,9 @@
                             <div class="form-group">
                                 <label for="edit_status">Status</label>
                                 <select class="form-control" id="edit_status" name="status">
-                                    <option value="2">On Process</option>
+                                    <option value="0">In Process</option>
                                     <option value="1">Approved</option>
-                                    <option value="0">Rejected</option>
+                                    <option value="2">Rejected</option>
                                 </select>
                             </div>
                         </div>
