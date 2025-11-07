@@ -23,16 +23,16 @@
                 Upline: {{ $user->upline_name ?? '-' }}
             </td>
             <td>
-                Available: {{ number_format($user->finance->saldo ?? 0, 2, '.', '') }}<br />
-                Frozen: {{ number_format($user->finance->saldo_beku ?? 0, 2, '.', '') }}<br />
-                Mission: {{ number_format($user->finance->saldo_misi ?? 0, 2, '.', '') }}<br />
-                Commission: {{ number_format($user->finance->komisi ?? 0, 2, '.', '') }}
+                Available: {{ number_format($user->finance->saldo ?? 0, 2, '.', ',') }}<br />
+                Frozen: {{ number_format($user->finance->saldo_beku ?? 0, 2, '.', ',') }}<br />
+                Mission: {{ number_format($user->finance->saldo_misi ?? 0, 2, '.', ',') }}<br />
+                Commission: {{ number_format($user->finance->komisi ?? 0, 2, '.', ',') }}
             </td>
             <td>
                 Recharge: {{ $user->deposit_count }}x<br />
-                Amount: {{ number_format($user->deposit_total ?? 0, 2, '.', '') }}<br />
+                Amount: {{ number_format($user->deposit_total ?? 0, 2, '.', ',') }}<br />
                 Withdraw: {{ $user->withdrawal_count }}x<br />
-                Amount: {{ number_format($user->withdrawal_total ?? 0, 2, '.', '') }}
+                Amount: {{ number_format($user->withdrawal_total ?? 0, 2, '.', ',') }}
             </td>
             <td>
                 {{ $user->task_done }}/{{ $user->task_limit }}<br />

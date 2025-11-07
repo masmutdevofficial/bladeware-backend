@@ -112,8 +112,8 @@
                                     <img src="{{ asset('storage/' . $transaction->product_image) }}" alt="Product Image" width="80">
                                 </td>
                                 <td><span class="text-black">{{ $transaction->product_name }}</span></td>
-                                <td><span class="text-black">{{ number_format($transaction->price, 2, ',', '.') }}</span></td>
-                                <td><span class="text-black">{{ number_format($transaction->profit, 2, ',', '.') }}</span></td>
+                                <td><span class="text-black">{{ number_format($transaction->price, 2, '.', ',') }}</span></td>
+                                <td><span class="text-black">{{ number_format($transaction->profit, 2, '.', ',') }}</span></td>
                                 <td><span class="text-black">{{ $transaction->created_at }}</span></td>
                                 <td><span class="text-black">{{ $transaction->updated_at }}</span></td>
                                 <td>

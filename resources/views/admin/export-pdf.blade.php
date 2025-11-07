@@ -49,16 +49,16 @@
                     Superior Username: {{ $user->upline_name ?? '-' }}
                 </td>
                 <td>
-                    Available Balance: {{ number_format($user->finance->saldo ?? 0, 2, '.', '') }}<br>
-                    Frozen Balance: {{ number_format($user->finance->saldo_beku ?? 0, 2, '.', '') }}<br>
-                    Mission Commission: {{ number_format($user->finance->saldo_misi ?? 0, 2, '.', '') }}<br>
-                    Superior Commission: {{ number_format($user->finance->komisi ?? 0, 2, '.', '') }}
+                    Available Balance: {{ number_format($user->finance->saldo ?? 0, 2, '.', ',') }}<br>
+                    Frozen Balance: {{ number_format($user->finance->saldo_beku ?? 0, 2, '.', ',') }}<br>
+                    Mission Commission: {{ number_format($user->finance->saldo_misi ?? 0, 2, '.', ',') }}<br>
+                    Superior Commission: {{ number_format($user->finance->komisi ?? 0, 2, '.', ',') }}
                 </td>
                 <td>
                     Recharge: {{ $user->deposit_count ?? 0 }} times<br>
-                    Amount: {{ number_format($user->deposit_total ?? 0, 2, '.', '') }}<br>
+                    Amount: {{ number_format($user->deposit_total ?? 0, 2, '.', ',') }}<br>
                     Withdrawn: {{ $user->withdrawal_count ?? 0 }} times<br>
-                    Withdrawn Amt: {{ number_format($user->withdrawal_total ?? 0, 2, '.', '') }}
+                    Withdrawn Amt: {{ number_format($user->withdrawal_total ?? 0, 2, '.', ',') }}
                 </td>
                 <td>
                     @if ($user->has_combination)

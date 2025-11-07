@@ -131,7 +131,7 @@
                             <td><span class="text-black">{{ $key + 1 }}</span></td>
 
                             <td><span class="text-black">{{ $deposit->name }}</span></td>
-                            <td><span class="text-black">{{ number_format($deposit->amount, 2, ',', '.') }}</span></td>
+                            <td><span class="text-black">{{ number_format($deposit->amount, 2, '.', ',') }}</span></td>
                             <td><span class="text-black">{{ $deposit->category_deposit == 'Bonus' ? 'Rewards' : $deposit->category_deposit }}</span></td>
                             <td>
                                 <div class="d-flex flex-column justify-content-center align-items-center">

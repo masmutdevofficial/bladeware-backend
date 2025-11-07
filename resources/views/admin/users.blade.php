@@ -209,10 +209,10 @@
                             </td>
                             <td>
                                 <div class="d-flex flex-column flex-wrap gap-2 text-sm" style="width:300px;padding-top: 34.5px;">
-                                    <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-black"><strong class="me-1">Available Balance:</strong> {{ $user->finance->saldo ?? 'N/A' }}</div>
-                                    <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-black"><strong class="me-1">Frozen Balance:</strong> {{ $user->finance->saldo_beku ?? 'N/A' }}</div>
-                                    <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-black"><strong class="me-1">Mission Commission:</strong> {{ $user->finance->saldo_misi ?? 'N/A' }}</div>
-                                    <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-black"><strong class="me-1">Superior Commission:</strong> {{ number_format($user->finance->komisi ?? 0, 2, '.', '') }}</div>
+                                    <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-black"><strong class="me-1">Available Balance:</strong> {{ isset($user->finance->saldo) ? number_format($user->finance->saldo, 2, '.', ',') : 'N/A' }}</div>
+                                    <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-black"><strong class="me-1">Frozen Balance:</strong> {{ isset($user->finance->saldo_beku) ? number_format($user->finance->saldo_beku, 2, '.', ',') : 'N/A' }}</div>
+                                    <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-black"><strong class="me-1">Mission Commission:</strong> {{ isset($user->finance->saldo_misi) ? number_format($user->finance->saldo_misi, 2, '.', ',') : 'N/A' }}</div>
+                                    <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-black"><strong class="me-1">Superior Commission:</strong> {{ isset($user->finance->komisi) ? number_format($user->finance->komisi, 2, '.', ',') : 'N/A' }}</div>
                                 </div>
                             </td>
                             <td>
@@ -229,7 +229,7 @@
                                     </div>
                                     <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-sm text-black" style="width:300px;">
                                         <strong class="me-1">Recharge Amount:</strong>
-                                        {{ $user->deposit_total > 0 ? number_format($user->deposit_total) : 'N/A' }}
+                                        {{ $user->deposit_total > 0 ? number_format($user->deposit_total, 2, '.', ',') : 'N/A' }}
                                     </div>
                                     <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-sm text-black" style="width:300px;">
                                         <strong class="me-1">Withdrawal Times:</strong>
@@ -237,7 +237,7 @@
                                     </div>
                                     <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-sm text-black" style="width:300px;">
                                         <strong class="me-1">Withdrawal Amount:</strong>
-                                        {{ $user->withdrawal_total > 0 ? number_format($user->withdrawal_total) : 'N/A' }}
+                                        {{ $user->withdrawal_total > 0 ? number_format($user->withdrawal_total, 2, '.', ',') : 'N/A' }}
                                     </div>
                             </td>
                             <td>

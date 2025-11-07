@@ -91,8 +91,8 @@
                     <tr><td><strong>Network Address</strong></td><td>{{ $user->network_address ?? 'N/A' }}</td></tr>
                     <tr><td><strong>Currency</strong></td><td>{{ $user->currency ?? 'N/A' }}</td></tr>
                     <tr><td><strong>Wallet Address</strong></td><td>{{ $user->wallet_address ?? 'N/A' }}</td></tr>
-                    <tr><td><strong>Balance</strong></td><td>{{ $finance->saldo ?? '0.00' }} {{ $user->currency ?? 'USDC' }}</td></tr>
-                    <tr><td><strong>Commision</strong></td><td>{{ $finance->komisi ?? '0.00' }} {{ $user->currency ?? 'USDC' }}</td></tr>
+                    <tr><td><strong>Balance</strong></td><td>{{ isset($finance->saldo) ? number_format($finance->saldo, 2, '.', ',') : '0.00' }} {{ $user->currency ?? 'USDC' }}</td></tr>
+                    <tr><td><strong>Commision</strong></td><td>{{ isset($finance->komisi) ? number_format($finance->komisi, 2, '.', ',') : '0.00' }} {{ $user->currency ?? 'USDC' }}</td></tr>
                     <tr><td><strong>Withdrawal Password</strong></td><td>{{ $finance->withdrawal_password ?? 'N/A' }}</td></tr>
                     <tr><td><strong>Updated At</strong></td><td>{{ $finance->updated_at }}</td></tr>
                 </tbody>

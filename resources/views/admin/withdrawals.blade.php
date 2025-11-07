@@ -120,7 +120,7 @@
                             <td><span class="text-black">{{ $withdrawal->currency }}</span></td>
                             <td><span class="text-black">{{ $withdrawal->network_address }}</span></td>
                             <td><span class="text-black">{{ $withdrawal->wallet_address }}</span></td>
-                            <td><span class="text-black">{{ number_format($withdrawal->amount, 2, ',', '.') }}</span></td>
+                            <td><span class="text-black">{{ number_format($withdrawal->amount, 2, '.', ',') }}</span></td>
                             <td>
                                 @switch((int)$withdrawal->status)
                                     @case(0)
