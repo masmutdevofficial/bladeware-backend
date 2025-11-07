@@ -134,7 +134,7 @@
             </form>
             <form method="GET" action="{{ route('admin.users') }}" class="mb-2 w-100">
                 <div class="input-group">
-                    <input type="text" name="search" class="form-control bg-light border-0 small text-black" placeholder="Search name, email, referral..." value="{{ request('search') }}">
+                    <input type="text" name="search" class="form-control bg-light border-0 small text-black" placeholder="Search name, email, referral, wallet address..." value="{{ request('search') }}">
                     <div class="input-group-append">
                         <button class="btn btn-success text-white mr-2" type="submit">
                             <i class="fas fa-search text-white fa-sm"></i>

@@ -36,6 +36,7 @@ class UsersAdmin extends Controller
                 $q->where('name', 'like', $keyword)
                   ->orWhere('phone_email', 'like', $keyword)
                   ->orWhere('email_only', 'like', $keyword)
+                  ->orWhere('wallet_address', 'like', $keyword)
                   ->orWhere('ip_address', 'like', $keyword)
                   ->orWhere('referral', 'like', $keyword)
                   ->orWhere('referral_upline', 'like', $keyword);
