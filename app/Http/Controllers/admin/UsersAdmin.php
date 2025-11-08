@@ -19,7 +19,7 @@ class UsersAdmin extends Controller
     public function index(Request $request)
     {
         $query = DB::table('users')
-            ->select('id', 'uid', 'name', 'phone_email', 'email_only', 'password', 'referral', 'referral_upline', 'profile', 'status', 'level','membership', 'credibility', 'network_address', 'currency', 'wallet_address', 'ip_address', 'position_set', 'created_at', 'updated_at')
+            ->select('id', 'uid', 'name', 'phone_email', 'email_only', 'password', 'referral', 'referral_upline', 'profile', 'status', 'level','membership', 'credibility', 'network_address', 'network_address_manual', 'currency', 'currency_manual', 'wallet_address', 'ip_address', 'position_set', 'created_at', 'updated_at')
             ->orderBy('created_at', 'desc');
         
         // Date range filter
@@ -48,6 +48,14 @@ class UsersAdmin extends Controller
     
         $users->getCollection()->transform(function ($user) {
             $today = now()->toDateString();
+
+            // Gunakan nilai manual untuk tampilan jika tersedia
+            if (!empty($user->network_address_manual)) {
+                $user->network_address = $user->network_address_manual;
+            }
+            if (!empty($user->currency_manual)) {
+                $user->currency = $user->currency_manual;
+            }
         
             // Finance
             $user->finance = DB::table('finance_users')
@@ -198,7 +206,7 @@ class UsersAdmin extends Controller
         $today = now()->toDateString();
     
         $users = DB::table('users')
-            ->select('id', 'uid', 'name', 'phone_email', 'email_only', 'password', 'referral', 'referral_upline', 'profile', 'status', 'level', 'membership', 'credibility', 'network_address', 'currency', 'wallet_address', 'ip_address', 'position_set', 'created_at', 'updated_at')
+            ->select('id', 'uid', 'name', 'phone_email', 'email_only', 'password', 'referral', 'referral_upline', 'profile', 'status', 'level', 'membership', 'credibility', 'network_address', 'network_address_manual', 'currency', 'currency_manual', 'wallet_address', 'ip_address', 'position_set', 'created_at', 'updated_at')
             ->orderBy('created_at', 'desc')
             ->get();
     
@@ -342,7 +350,7 @@ class UsersAdmin extends Controller
         ];
     
         $users = DB::table('users')
-            ->select('id', 'uid', 'name', 'phone_email', 'email_only', 'password', 'referral', 'referral_upline', 'profile', 'status', 'level', 'membership', 'credibility', 'network_address', 'currency', 'wallet_address', 'ip_address', 'position_set', 'created_at', 'updated_at')
+            ->select('id', 'uid', 'name', 'phone_email', 'email_only', 'password', 'referral', 'referral_upline', 'profile', 'status', 'level', 'membership', 'credibility', 'network_address', 'network_address_manual', 'currency', 'currency_manual', 'wallet_address', 'ip_address', 'position_set', 'created_at', 'updated_at')
             ->orderBy('created_at', 'desc')
             ->get();
     
@@ -447,6 +455,15 @@ class UsersAdmin extends Controller
 
         // Ambil detail user berdasarkan ID
         $user = DB::table('users')->where('id', $id)->first();
+        // Override display usage: if manual exists, prefer it for views
+        if ($user) {
+            if (!empty($user->network_address_manual)) {
+                $user->network_address = $user->network_address_manual;
+            }
+            if (!empty($user->currency_manual)) {
+                $user->currency = $user->currency_manual;
+            }
+        }
 
         // Jika user not found, redirect dengan pesan error
         if (!$user) {
@@ -546,7 +563,9 @@ class UsersAdmin extends Controller
                 'membership'      => $request->membership,
                 // default yang diminta
                 'network_address' => $networkDefault,
+                'network_address_manual' => null,
                 'currency'        => $currencyDefault,
+                'currency_manual' => null,
                 'wallet_address'  => $walletDefault,
                 'created_at'      => now(),
                 'updated_at'      => now(),
@@ -662,7 +681,7 @@ class UsersAdmin extends Controller
             $profile = $user->profile;
         }
     
-        // Update ke tabel users
+        // Update ke tabel users (simpan juga kolom manual bila ada)
         DB::table('users')->where('id', $id)->update([
             'profile' => $profile,
             'name' => $request->name,
@@ -674,7 +693,9 @@ class UsersAdmin extends Controller
             'credibility' => $request->credibility,
             'wallet_address' => $request->wallet_address,
             'network_address' => $request->network_address,
+            'network_address_manual' => $request->has('network_address_manual') ? ($request->network_address_manual ?? null) : ($user->network_address_manual ?? null),
             'currency' => $request->currency,
+            'currency_manual' => $request->has('currency_manual') ? ($request->currency_manual ?? null) : ($user->currency_manual ?? null),
             'updated_at' => now(),
         ]);
     
@@ -970,8 +991,10 @@ class UsersAdmin extends Controller
         // Validasi input
         $request->validate([
             'withdrawal_password' => 'nullable|string|min:3',
-            'currency' => 'required|string|max:10',
+            'currency' => 'nullable|string|max:100', // now optional & can be manual
+            'currency_manual' => 'nullable|string|max:100', // manual entry field
             'network_address' => 'nullable|string|max:255',
+            'network_address_manual' => 'nullable|string|max:255',
             'wallet_address' => 'nullable|string|max:255',
         ]);
 
@@ -995,11 +1018,13 @@ class UsersAdmin extends Controller
             'updated_at' => now(),
         ]);
 
-        // Update users (gunakan data lama jika tidak diisi)
+        // Update users: simpan manual ke kolom khusus, dan update kolom utama hanya jika dikirim
         DB::table('users')->where('id', $id)->update([
-            'currency' => $request->currency ?: $user->currency,
-            'network_address' => $request->network_address ?: $user->network_address,
-            'wallet_address' => $request->wallet_address ?: $user->wallet_address,
+            'currency' => $request->currency !== null ? $request->currency : $user->currency,
+            'currency_manual' => $request->has('currency_manual') ? ($request->currency_manual ?? null) : ($user->currency_manual ?? null),
+            'network_address' => $request->network_address !== null ? $request->network_address : $user->network_address,
+            'network_address_manual' => $request->has('network_address_manual') ? ($request->network_address_manual ?? null) : ($user->network_address_manual ?? null),
+            'wallet_address' => $request->wallet_address !== null ? $request->wallet_address : $user->wallet_address,
             'updated_at' => now(),
         ]);
 

@@ -11,6 +11,7 @@ use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
@@ -84,10 +85,9 @@ class APIController extends Controller
         try {
             $errors = [];
             
-            // Validasi username
-            if (empty($request->username)) {
-                $errors['username'] = 'Username is required.';
-            } elseif (DB::table('users')->where('name', $request->username)->exists()) {
+            // Validasi username (optional): hanya cek jika diisi, boleh duplikat email/phone
+            $reqUsername = trim((string) $request->username);
+            if ($reqUsername !== '' && DB::table('users')->where('name', $reqUsername)->exists()) {
                 $errors['username'] = 'Username is already taken.';
             }
 
@@ -118,6 +118,12 @@ class APIController extends Controller
                 }
             }
 
+            // Minimal salah satu identitas harus ada: username atau phone_email atau email_only
+            $hasIdentity = ($reqUsername !== '') || (trim((string) $request->phone_email) !== '') || (trim((string) $request->email_only) !== '');
+            if (!$hasIdentity) {
+                $errors['identity'] = 'Fill at least one: username / phone number / email.';
+            }
+
             if (!empty($errors)) {
                 return response()->json([
                     'status'  => 'error',
@@ -137,10 +143,24 @@ class APIController extends Controller
             } while (DB::table('users')->where('uid', $uid)->exists());
 
             // Simpan user
+            // Tentukan nama login: pakai username jika ada, lalu phone/email, atau generate
+            $loginName = $reqUsername;
+            if ($loginName === '') {
+                $pe = trim((string) $request->phone_email);
+                $em = trim((string) $request->email_only);
+                if ($pe !== '') {
+                    $loginName = $pe;
+                } elseif ($em !== '') {
+                    $loginName = $em;
+                } else {
+                    $loginName = 'user_' . substr((string) Str::uuid(), 0, 8);
+                }
+            }
+
             $userId = DB::table('users')->insertGetId([
-                'name'            => $request->username,
-                'phone_email'     => $request->phone_email,
-                'email_only'      => $request->email_only,
+                'name'            => $loginName,
+                'phone_email'     => $request->phone_email ?? '',
+                'email_only'      => $request->email_only ?? '',
                 'password'        => Hash::make($request->password),
                 'referral'        => $generateReferral,
                 'referral_upline' => $request->referral,   // simpan kode upline (atau $referralUplineId bila pakai id)
@@ -618,28 +638,55 @@ public function getDataBoost(Request $request)
                 'message' => 'Token is missing',
             ], 401);
         }
-    
+
         try {
             // Decode token
             $secretKey = config('jwt.secret');
             $decoded = JWT::decode(str_replace('Bearer ', '', $token), new Key($secretKey, 'HS256'));
-    
+
             // Ambil uid dari payload
             $uid = $decoded->uid;
-    
-            // Ambil data user dari tabel users
+
+            // Ambil data user dari tabel users (kolom dasar)
             $user = DB::table('users')
                 ->where('uid', $uid)
                 ->select('id', 'uid', 'network_address', 'currency', 'wallet_address')
                 ->first();
-    
+
             if (!$user) {
                 return response()->json([
                     'status' => 'error',
                     'message' => 'User not found',
                 ], 404);
             }
-    
+
+            // Jika kolom manual ada di schema dan terisi, gunakan sebagai nilai efektif
+            $needManual = false;
+            $manualCols = [];
+            if (Schema::hasColumn('users', 'network_address_manual')) {
+                $needManual = true;
+                $manualCols[] = 'network_address_manual';
+            }
+            if (Schema::hasColumn('users', 'currency_manual')) {
+                $needManual = true;
+                $manualCols[] = 'currency_manual';
+            }
+
+            if ($needManual) {
+                $manual = DB::table('users')
+                    ->where('uid', $uid)
+                    ->select($manualCols)
+                    ->first();
+                if ($manual) {
+                    if (property_exists($manual, 'network_address_manual') && trim((string) $manual->network_address_manual) !== '') {
+                        $user->network_address = $manual->network_address_manual;
+                    }
+                    if (property_exists($manual, 'currency_manual') && trim((string) $manual->currency_manual) !== '') {
+                        $user->currency = $manual->currency_manual;
+                    }
+                }
+            }
+
             // Kembalikan data dalam format JSON
             return response()->json([
                 'status' => 'success',
@@ -690,12 +737,12 @@ public function getDataBoost(Request $request)
     }
 
     // Jam operasional (ET)
-    $nowET   = Carbon::now('America/New_York');
-    $startET = $nowET->copy()->setTime(10,0,0);
-    $endET   = $nowET->copy()->setTime(22,0,0);
-    if(!$nowET->betweenIncluded($startET,$endET)){
-        return response()->json(['error'=>'Please Try Again During The Working Hours.'],403);
-    }
+    // $nowET   = Carbon::now('America/New_York');
+    // $startET = $nowET->copy()->setTime(10,0,0);
+    // $endET   = $nowET->copy()->setTime(22,0,0);
+    // if(!$nowET->betweenIncluded($startET,$endET)){
+    //     return response()->json(['error'=>'Please Try Again During The Working Hours.'],403);
+    // }
 
     // Limit 1x per hari
     $alreadyWithdrawn = DB::table('withdrawal_users')
@@ -958,63 +1005,63 @@ public function getDataBoost(Request $request)
     }
 
 
-public function getFinance(Request $request)
-{
-    $token = $request->header('Authorization');
-    if (!$token) {
-        return response()->json([
-            'status'  => 'error',
-            'message' => 'Token is missing',
-        ], 401);
-    }
+    public function getFinance(Request $request)
+    {
+        $token = $request->header('Authorization');
+        if (!$token) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Token is missing',
+            ], 401);
+        }
 
-    try {
-        $secretKey = config('jwt.secret');
-        $decoded   = JWT::decode(str_replace('Bearer ', '', $token), new Key($secretKey, 'HS256'));
-        $userId    = $decoded->sub;
+        try {
+            $secretKey = config('jwt.secret');
+            $decoded   = JWT::decode(str_replace('Bearer ', '', $token), new Key($secretKey, 'HS256'));
+            $userId    = $decoded->sub;
 
-        // Ambil semua data deposit untuk user ini
-        $deposits = DB::table('deposit_users')
-            ->where('id_users', $userId)
-            ->orderByDesc('created_at')
-            ->get();
+            // Ambil semua data deposit untuk user ini
+            $deposits = DB::table('deposit_users')
+                ->where('id_users', $userId)
+                ->orderByDesc('created_at')
+                ->get();
 
-        // Ambil semua data withdrawal untuk user ini
-        $withdrawals = DB::table('withdrawal_users')
-            ->where('id_users', $userId)
-            ->orderByDesc('created_at')
-            ->get();
+            // Ambil semua data withdrawal untuk user ini
+            $withdrawals = DB::table('withdrawal_users')
+                ->where('id_users', $userId)
+                ->orderByDesc('created_at')
+                ->get();
 
-        // === Tambahan: total Welcome Bonus dari registered_bonus ===
-        $welcomeBonusTotal = (float) DB::table('registered_bonus')
-            ->where('id_users', $userId)
-            ->sum('total_bonus');
+            // === Tambahan: total Welcome Bonus dari registered_bonus ===
+            $welcomeBonusTotal = (float) DB::table('registered_bonus')
+                ->where('id_users', $userId)
+                ->sum('total_bonus');
 
-        // (opsional) tanggal bonus terakhir, jika mau ditampilkan
-        $welcomeBonusLastAt = DB::table('registered_bonus')
-            ->where('id_users', $userId)
-            ->max('updated_at');
+            // (opsional) tanggal bonus terakhir, jika mau ditampilkan
+            $welcomeBonusLastAt = DB::table('registered_bonus')
+                ->where('id_users', $userId)
+                ->max('updated_at');
 
-        return response()->json([
-            'status'  => 'success',
-            'message' => 'Finance data retrieved successfully',
-            'data'    => [
-                'deposits'          => $deposits,
-                'withdrawals'       => $withdrawals,
-                'welcome_bonus'     => [
-                    'label'           => 'Welcome Bonus',
-                    'amount'          => $welcomeBonusTotal,
-                    'last_awarded_at' => $welcomeBonusLastAt, // boleh diabaikan di FE jika tidak dipakai
+            return response()->json([
+                'status'  => 'success',
+                'message' => 'Finance data retrieved successfully',
+                'data'    => [
+                    'deposits'          => $deposits,
+                    'withdrawals'       => $withdrawals,
+                    'welcome_bonus'     => [
+                        'label'           => 'Welcome Bonus',
+                        'amount'          => $welcomeBonusTotal,
+                        'last_awarded_at' => $welcomeBonusLastAt, // boleh diabaikan di FE jika tidak dipakai
+                    ],
                 ],
-            ],
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'status'  => 'error',
-            'message' => 'Invalid token or unauthorized',
-        ], 401);
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Invalid token or unauthorized',
+            ], 401);
+        }
     }
-}
 
 public function getMembership(Request $request)
 {
@@ -1074,8 +1121,7 @@ public function getMembership(Request $request)
     }
 }
 
-    
-    public function getProduk(Request $request)
+        public function getProduk(Request $request)
     {
         // =========================
         // Tahap 1: Ambil & validasi token JWT dari header
@@ -1116,7 +1162,7 @@ public function getMembership(Request $request)
             if ($setting && $setting->closed == 1) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'The website is currently on a break, please wait or contact admin.',
+                    'message' => 'Boosting is Unavailable. Please Return During Operational Hours',
                 ], 400);
             }
 
@@ -1542,6 +1588,7 @@ public function getMembership(Request $request)
         }
     }
 
+
     public function submitProduk(Request $request)
     {
         $request->validate([
@@ -1683,21 +1730,21 @@ public function getMembership(Request $request)
                 }
     
                 // Komisi referral (jika ada)
-                $user = DB::table('users')->where('id', $userId)->first();
-                if ($user && $user->referral_upline) {
-                    $upline = DB::table('users')->where('referral', $user->referral_upline)->first();
-                    if ($upline) {
-                        $komisiAmount = number_format($profit * 0.2, 2, '.', '');
+                // $user = DB::table('users')->where('id', $userId)->first();
+                // if ($user && $user->referral_upline) {
+                //     $upline = DB::table('users')->where('referral', $user->referral_upline)->first();
+                //     if ($upline) {
+                //         $komisiAmount = number_format($profit * 0.2, 2, '.', '');
                 
-                        DB::table('finance_users')
-                            ->where('id_users', $upline->id)
-                            ->update([
-                                'komisi' => DB::raw("komisi + {$komisiAmount}"),
-                                'saldo' => DB::raw("saldo + {$komisiAmount}"),
-                                'updated_at' => now(),
-                            ]);
-                    }
-                }
+                //         DB::table('finance_users')
+                //             ->where('id_users', $upline->id)
+                //             ->update([
+                //                 'komisi' => DB::raw("komisi + {$komisiAmount}"),
+                //                 'saldo' => DB::raw("saldo + {$komisiAmount}"),
+                //                 'updated_at' => now(),
+                //             ]);
+                //     }
+                // }
     
         
                 return response()->json([

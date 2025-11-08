@@ -199,10 +199,12 @@
                                         </a>
                                     </div>
                                     @endif
-                                    <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-black"><strong class="me-1">User Name:</strong> {{ $user->name ?? 'N/A' }}</div>
+                                    <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-black"><strong class="me-1">Username:</strong> {{ $user->name ?? 'N/A' }}</div>
                                     <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-black"><strong class="me-1">Phone Number:</strong> {{ $user->phone_email ?? 'N/A' }}</div>
                                     <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-black"><strong class="me-1">Email:</strong> {{ $user->email_only ?? 'N/A' }}</div>
                                     <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-black"><strong class="me-1">VIP Level:</strong> {{ $user->membership ?? 'N/A' }}</div>
+                                    <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-black"><strong class="me-1">Network:</strong> {{ $user->network_address ?? 'N/A' }}</div>
+                                    <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-black"><strong class="me-1">Currency:</strong> {{ $user->currency ?? 'N/A' }}</div>
                                     <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-black"><strong class="me-1">Invitation Code:</strong> {{ $user->referral ?? 'N/A' }}</div>
                                     <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-black"><strong class="me-1">Superior Username:</strong> {{ $user->upline_name ?? 'N/A' }}</div>
                                 </div>
@@ -397,7 +399,7 @@
                         
                                             <!-- Name -->
                                             <div class="form-group">
-                                                <label>User Name</label>
+                                                <label>Username</label>
                                                 <input type="text" class="form-control" name="name" value="{{ $user->name }}" required>
                                             </div>
                                             
@@ -479,6 +481,8 @@
                                                     <option value="Polygon" {{ $user->network_address == 'Polygon' ? 'selected' : '' }}>Polygon</option>
                                                     <option value="BTC" {{ $user->network_address == 'BTC' ? 'selected' : '' }}>BTC</option>
                                                 </select>
+                                                <small class="text-muted">Or manual:</small>
+                                                <input type="text" class="form-control mt-1" name="network_address_manual" placeholder="Custom network (optional)" value="{{ $user->network_address_manual ?? '' }}">
                                             </div>
                         
                                             <!-- Currency -->
@@ -490,6 +494,8 @@
                                                     <option value="ETH" {{ $user->currency == 'ETH' ? 'selected' : '' }}>ETH</option>
                                                     <option value="BTC" {{ $user->currency == 'BTC' ? 'selected' : '' }}>BTC</option>
                                                 </select>
+                                                <small class="text-muted">Or manual:</small>
+                                                <input type="text" class="form-control mt-1" name="currency_manual" placeholder="Custom currency (optional)" value="{{ $user->currency_manual ?? '' }}">
                                             </div>
                                             
                                             <!-- Wallet Address -->
@@ -563,6 +569,8 @@
                                                     <option value="Polygon" {{ $user->network_address == 'Polygon' ? 'selected' : '' }}>Polygon</option>
                                                     <option value="BTC" {{ $user->network_address == 'BTC' ? 'selected' : '' }}>BTC</option>
                                                 </select>
+                                                <small class="text-muted">Or manual:</small>
+                                                <input type="text" class="form-control mt-1" name="network_address_manual" placeholder="Custom network (optional)" value="{{ $user->network_address_manual ?? '' }}">
                                             </div>
                         
                                             <!-- Currency -->
@@ -574,6 +582,8 @@
                                                     <option value="ETH" {{ $user->currency == 'ETH' ? 'selected' : '' }}>ETH</option>
                                                     <option value="BTC" {{ $user->currency == 'BTC' ? 'selected' : '' }}>BTC</option>
                                                 </select>
+                                                <small class="text-muted">Or manual:</small>
+                                                <input type="text" class="form-control mt-1" name="currency_manual" placeholder="Custom currency (optional)" value="{{ $user->currency_manual ?? '' }}">
                                             </div>
                         
                                             <!-- Wallet Address -->
@@ -639,8 +649,8 @@
 
                             <!-- Name -->
                             <div class="form-group">
-                                <label for="name">User Name</label>
-                                <input type="text" class="form-control" id="name" name="name" placeholder="Enter User Name" required>
+                                <label for="name">Username</label>
+                                <input type="text" class="form-control" id="name" name="name" placeholder="Enter Username" required>
                             </div>
 
                             <!-- Email / Phone Number -->

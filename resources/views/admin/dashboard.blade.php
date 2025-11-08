@@ -58,7 +58,7 @@
                             </div>
                             <div class="row no-gutters align-items-center">
                                 <div class="col-auto">
-                                    <div class="h5 mb-0 mr-3 font-weight-bold text-success">{{ $totalDeposits }}</div>
+                                    <div class="h5 mb-0 mr-3 font-weight-bold text-success">{{ number_format($totalDeposits ?? 0, 2, '.', ',') }}</div>
                                 </div>
                             </div>
                         </div>
@@ -78,7 +78,7 @@
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
                                 Total Withdraw</div>
-                            <div class="h5 mb-0 font-weight-bold text-success">{{ $totalWithdrawals }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-success">{{ number_format($totalWithdrawals ?? 0, 2, '.', ',') }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-dollar-sign fa-2x text-success"></i>
@@ -118,7 +118,7 @@
                             </div>
                             <div class="row no-gutters align-items-center">
                                 <div class="col-auto">
-                                    <div class="h5 mb-0 mr-3 font-weight-bold text-success">{{ $todayDeposits }}</div>
+                                    <div class="h5 mb-0 mr-3 font-weight-bold text-success">{{ number_format($todayDeposits ?? 0, 2, '.', ',') }}</div>
                                 </div>
                             </div>
                         </div>
@@ -138,7 +138,7 @@
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
                                 Today's Bonus</div>
-                            <div class="h5 mb-0 font-weight-bold text-success">{{ $todayBonus }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-success">{{ number_format($todayBonus ?? 0, 2, '.', ',') }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-dollar-sign fa-2x text-success"></i>
@@ -156,7 +156,7 @@
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
                                 Today's Withdraw</div>
-                            <div class="h5 mb-0 font-weight-bold text-success">{{ $todayWithdrawals }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-success">{{ number_format($todayWithdrawals ?? 0, 2, '.', ',') }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-dollar-sign fa-2x text-success"></i>
@@ -196,7 +196,7 @@
                             </div>
                             <div class="row no-gutters align-items-center">
                                 <div class="col-auto">
-                                    <div class="h5 mb-0 mr-3 font-weight-bold text-success">{{ $monthlyDeposits }}</div>
+                                    <div class="h5 mb-0 mr-3 font-weight-bold text-success">{{ number_format($monthlyDeposits ?? 0, 2, '.', ',') }}</div>
                                 </div>
                             </div>
                         </div>
@@ -216,7 +216,7 @@
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
                                 Monthly Bonus</div>
-                            <div class="h5 mb-0 font-weight-bold text-success">{{ $monthlyBonus }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-success">{{ number_format($monthlyBonus ?? 0, 2, '.', ',') }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-dollar-sign fa-2x text-success"></i>
@@ -234,7 +234,7 @@
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
                                 Monthly Withdraw</div>
-                            <div class="h5 mb-0 font-weight-bold text-success">{{ $monthlyWithdrawals }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-success">{{ number_format($monthlyWithdrawals ?? 0, 2, '.', ',') }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-dollar-sign fa-2x text-success"></i>
