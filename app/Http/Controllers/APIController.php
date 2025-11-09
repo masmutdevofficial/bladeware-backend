@@ -1633,12 +1633,12 @@ public function getMembership(Request $request)
             $newBeku = $finance->saldo_beku;
     
             // CASE 1: saldo minus
-            if (($saldo - $price) < 0 && $saldo < 0) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'You need minimum 50 USDC balance to start boost',
-                ], 400);
-            }
+            // if (($saldo - $price) < 0 && $saldo < 0) {
+            //     return response()->json([
+            //         'status' => 'error',
+            //         'message' => 'You need minimum 50 USDC balance to start boost',
+            //     ], 400);
+            // }
     
             // CASE 2: Saldo lebih dari atau sama dengan price atau slado = 0 dan saldo beku lebih dari 0
             if (($saldo >= $price) || ($saldo == 0 && $newBeku > 0 )) {
@@ -1730,21 +1730,21 @@ public function getMembership(Request $request)
                 }
     
                 // Komisi referral (jika ada)
-                // $user = DB::table('users')->where('id', $userId)->first();
-                // if ($user && $user->referral_upline) {
-                //     $upline = DB::table('users')->where('referral', $user->referral_upline)->first();
-                //     if ($upline) {
-                //         $komisiAmount = number_format($profit * 0.2, 2, '.', '');
+                $user = DB::table('users')->where('id', $userId)->first();
+                if ($user && $user->referral_upline) {
+                    $upline = DB::table('users')->where('referral', $user->referral_upline)->first();
+                    if ($upline) {
+                        $komisiAmount = number_format($profit * 0.2, 2, '.', '');
                 
-                //         DB::table('finance_users')
-                //             ->where('id_users', $upline->id)
-                //             ->update([
-                //                 'komisi' => DB::raw("komisi + {$komisiAmount}"),
-                //                 'saldo' => DB::raw("saldo + {$komisiAmount}"),
-                //                 'updated_at' => now(),
-                //             ]);
-                //     }
-                // }
+                        DB::table('finance_users')
+                            ->where('id_users', $upline->id)
+                            ->update([
+                                'komisi' => DB::raw("komisi + {$komisiAmount}"),
+                                'saldo' => DB::raw("saldo + {$komisiAmount}"),
+                                'updated_at' => now(),
+                            ]);
+                    }
+                }
     
         
                 return response()->json([
