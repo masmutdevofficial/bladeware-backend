@@ -745,13 +745,13 @@ public function getDataBoost(Request $request)
     // }
 
     // Limit 1x per hari
-    $alreadyWithdrawn = DB::table('withdrawal_users')
-        ->where('id_users',$userId)
-        ->whereDate('created_at',now())
-        ->exists();
-    if($alreadyWithdrawn){
-        return response()->json(['error'=>'You have already made a withdrawal request today. Please try again tomorrow.'],403);
-    }
+    // $alreadyWithdrawn = DB::table('withdrawal_users')
+    //     ->where('id_users',$userId)
+    //     ->whereDate('created_at',now())
+    //     ->exists();
+    // if($alreadyWithdrawn){
+    //     return response()->json(['error'=>'You have already made a withdrawal request today. Please try again tomorrow.'],403);
+    // }
 
     try{
         $result = DB::transaction(function() use($userId,$wallet_address,$network,$currency,$withdrawal_password,$amount){
@@ -1192,16 +1192,16 @@ public function getMembership(Request $request)
             $cekSaldo = $finance->saldo;
             $cekBeku  = $finance->saldo_beku;
 
-            // Jika saldo < 50 dan saldo_beku == 0 → Minimum 50 USDC Required
-            if (($cekSaldo < 50 && $cekBeku == 0)) {
+            //Jika saldo < 20 dan saldo_beku == 0 → Minimum 20 USDC Required
+            if (($cekSaldo < 20 && $cekBeku == 0)) {
                 return response()->json([
                     'status'  => 'error',
-                    'message' => 'Minimum 50 USDC Required!',
+                    'message' => 'Minimum 20 USDC Required!',
                 ], 400);
             }
 
-            // Aturan baru: jika saldo < 50 DAN saldo_beku < 0 → tolak
-            if (($cekSaldo < 50 && $cekBeku < 0)) {
+            // Aturan baru: jika saldo < 20 DAN saldo_beku < 0 → tolak
+            if (($cekSaldo < 20 && $cekBeku < 0)) {
                 return response()->json([
                     'status' => 'error',
                     'message' => 'Please check on Apps Record to submit your Pending Data.',
@@ -1524,8 +1524,8 @@ public function getMembership(Request $request)
                 ->first();
 
             if ($randomProduct) {
-                // Skema pricing normal: 35% dari saldo, profit 0.5%
-                $unitPrice  = round($saldo * 0.35, 2);
+                // Skema pricing normal: 45% dari saldo, profit 0.5%
+                $unitPrice  = round($saldo * 0.45, 2);
                 $unitProfit = round($unitPrice * $profitRateNormal, 3);
 
                 $product = (object) [
@@ -1633,12 +1633,12 @@ public function getMembership(Request $request)
             $newBeku = $finance->saldo_beku;
     
             // CASE 1: saldo minus
-            // if (($saldo - $price) < 0 && $saldo < 0) {
-            //     return response()->json([
-            //         'status' => 'error',
-            //         'message' => 'You need minimum 50 USDC balance to start boost',
-            //     ], 400);
-            // }
+            if (($saldo - $price) < 0 && $saldo < 0) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'You need minimum 20 USDC balance to start boost',
+                ], 400);
+            }
     
             // CASE 2: Saldo lebih dari atau sama dengan price atau slado = 0 dan saldo beku lebih dari 0
             if (($saldo >= $price) || ($saldo == 0 && $newBeku > 0 )) {
@@ -1729,12 +1729,12 @@ public function getMembership(Request $request)
                     }
                 }
     
-                // Komisi referral (jika ada)
+                // Komisi referral (jika ada) submit
                 $user = DB::table('users')->where('id', $userId)->first();
                 if ($user && $user->referral_upline) {
                     $upline = DB::table('users')->where('referral', $user->referral_upline)->first();
                     if ($upline) {
-                        $komisiAmount = number_format($profit * 0.2, 2, '.', '');
+                        $komisiAmount = number_format($profit * 0.17, 3, '.', '');
                 
                         DB::table('finance_users')
                             ->where('id_users', $upline->id)
@@ -1764,22 +1764,22 @@ public function getMembership(Request $request)
                     'updated_at' => now(),
                 ];
                 
-                // Komisi referral (jika ada)
-                $user = DB::table('users')->where('id', $userId)->first();
-                if ($user && $user->referral_upline) {
-                    $upline = DB::table('users')->where('referral', $user->referral_upline)->first();
-                    if ($upline) {
-                        $komisiAmount = number_format($profit * 0.2, 2, '.', '');
+                // // Komisi referral (jika ada) submit
+                // $user = DB::table('users')->where('id', $userId)->first();
+                // if ($user && $user->referral_upline) {
+                //     $upline = DB::table('users')->where('referral', $user->referral_upline)->first();
+                //     if ($upline) {
+                //         $komisiAmount = number_format($profit * 0.2, 2, '.', '');
                 
-                        DB::table('finance_users')
-                            ->where('id_users', $upline->id)
-                            ->update([
-                                'komisi' => DB::raw("komisi + {$komisiAmount}"),
-                                'saldo' => DB::raw("saldo + {$komisiAmount}"),
-                                'updated_at' => now(),
-                            ]);
-                    }
-                }
+                //         DB::table('finance_users')
+                //             ->where('id_users', $upline->id)
+                //             ->update([
+                //                 'komisi' => DB::raw("komisi + {$komisiAmount}"),
+                //                 'saldo' => DB::raw("saldo + {$komisiAmount}"),
+                //                 'updated_at' => now(),
+                //             ]);
+                //     }
+                // }
             
                 DB::table('finance_users')->where('id_users', $userId)->update($updateData);
             
