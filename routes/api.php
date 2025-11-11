@@ -7,6 +7,10 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\APIController;
 use Carbon\Carbon;
 
+Route::get('/healthz', function () {
+    return response()->noContent(); // 204
+});
+
 Route::post('/login', [APIController::class, 'login']);
 Route::post('/register', [APIController::class, 'register']);
 Route::get('/get-profile-data', [APIController::class, 'getProfileData']);
