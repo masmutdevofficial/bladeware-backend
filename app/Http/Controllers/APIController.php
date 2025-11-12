@@ -21,65 +21,68 @@ class APIController extends Controller
     {
         if (!$request->has('phone_email') || !$request->has('password')) {
             return response()->json([
-                'status' => 'error',
+                'status'  => 'error',
                 'message' => 'Email/Phone and password are required',
             ], 400);
         }
-    
+
         $phone_email = $request->input('phone_email');
-        $password = $request->input('password');
-    
+        $password    = $request->input('password');
+
         $user = DB::table('users')
             ->where('phone_email', $phone_email)
             ->orWhere('name', $phone_email)
             ->orWhere('email_only', $phone_email)
             ->first();
-    
+
         if (!$user || !Hash::check($password, $user->password)) {
             return response()->json([
-                'status' => 'error',
+                'status'  => 'error',
                 'message' => 'Invalid Credentials',
             ], 401);
         }
-    
-        // Simpan IP Address jika dikirim
-        $ipAddress = $request->input('ip_address');
-        if ($ipAddress) {
+
+        // Ambil IP asli (Cloudflare lebih prioritas)
+        $ip = $request->header('CF-Connecting-IP');
+        if (!$ip) {
+            $ip = $request->ip(); // akan resolve dari X-Forwarded-For bila TrustProxies benar
+        }
+
+        // Simpan IP bila tersedia
+        if ($ip) {
             DB::table('users')
                 ->where('id', $user->id)
                 ->update([
-                    'ip_address' => $ipAddress,
+                    'ip_address' => $ip,
                     'updated_at' => now(),
                 ]);
         }
-    
-    $payload = [
-        'iss' => config('app.url'),   // jangan pakai env() di sini juga
-        'sub' => $user->id,
-        'uid' => $user->uid,
-        'iat' => time(),
-        'exp' => time() + (6 * 3600),
-    ];
 
-    $secretKey = config('jwt.secret');
+        $payload = [
+            'iss' => config('app.url'),
+            'sub' => $user->id,
+            'uid' => $user->uid ?? null,
+            'iat' => time(),
+            'exp' => time() + (6 * 3600),
+        ];
 
-    if (!is_string($secretKey) || $secretKey === '') {
-        Log::error('JWT secret is missing or invalid type');
+        $secretKey = config('jwt.secret');
+        if (!is_string($secretKey) || $secretKey === '') {
+            Log::error('JWT secret is missing or invalid type');
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Server misconfiguration: JWT secret missing',
+            ], 500);
+        }
+
+        $jwt = JWT::encode($payload, $secretKey, 'HS256');
+
         return response()->json([
-            'status' => 'error',
-            'message' => 'Server misconfiguration: JWT secret missing',
-        ], 500);
-    }
-
-    $jwt = JWT::encode($payload, $secretKey, 'HS256');
-    
-        return response()->json([
-            'status' => 'success',
+            'status'  => 'success',
             'message' => 'Login successful',
-            'token' => $jwt,
+            'token'   => $jwt,
         ]);
     }
-
     public function register(Request $request)
     {
         try {
