@@ -5,6 +5,7 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\URL;
 
 require_once app_path('Helpers/GlobalHelpers.php');
 
@@ -20,7 +21,7 @@ class AppServiceProvider extends ServiceProvider
         if (app()->environment('production')) {
             URL::forceScheme('https'); // paksa semua URL jadi https
         }
-        
+
         // 1) Jangan jalan saat perintah artisan (php artisan ...)
         if ($this->app->runningInConsole()) {
             return;
