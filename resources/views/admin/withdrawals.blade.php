@@ -17,7 +17,7 @@
         $status.trigger('change'); // kalau pakai plugin/select2 tetap kepilih
 
         // Atur action form edit
-        var formAction = "{{ route('admin.edit-withdrawals', ':id') }}".replace(':id', withdrawal.id);
+        var formAction = "{{ route('admin.edit-withdrawals', ['id' => '__ID__'], false) }}".replace('__ID__', withdrawal.id);
         $('#editForm').attr('action', formAction);
     });
 
