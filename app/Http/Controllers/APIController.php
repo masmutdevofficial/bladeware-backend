@@ -19,20 +19,21 @@ class APIController extends Controller
 {
     public function login(Request $request)
     {
-        if (!$request->has('phone_email') || !$request->has('password')) {
+        // Accept login identifier from any of these fields: phone_email, email_only, name
+        if (!$request->has('password') || (! $request->has('phone_email') && ! $request->has('email_only') && ! $request->has('name'))) {
             return response()->json([
                 'status'  => 'error',
-                'message' => 'Email/Phone and password are required',
+                'message' => 'Login identifier (phone_email / email_only / name) and password are required',
             ], 400);
         }
 
-        $phone_email = $request->input('phone_email');
-        $password    = $request->input('password');
+        $loginIdentifier = trim((string) ($request->input('phone_email') ?? $request->input('email_only') ?? $request->input('name')));
+        $password        = $request->input('password');
 
         $user = DB::table('users')
-            ->where('phone_email', $phone_email)
-            ->orWhere('name', $phone_email)
-            ->orWhere('email_only', $phone_email)
+            ->where('phone_email', $loginIdentifier)
+            ->orWhere('name', $loginIdentifier)
+            ->orWhere('email_only', $loginIdentifier)
             ->first();
 
         if (!$user || !Hash::check($password, $user->password)) {
@@ -83,6 +84,7 @@ class APIController extends Controller
             'token'   => $jwt,
         ]);
     }
+    
     public function register(Request $request)
     {
         try {
@@ -725,7 +727,7 @@ public function getDataBoost(Request $request)
     // Jika hanya USDC yang minimal 1:
     // if (strtoupper($currency)==='USDC' && $amount<1) { return response()->json(['error'=>'Minimum withdrawal for USDC is 1'],400); }
     // Versi saat ini: semua currency non-empty minimal 1
-    if (strtoupper($currency) && $amount < 1) { return response()->json(['error'=>'Minimum withdrawal for USDC is 1'],400); }
+    if (strtoupper($currency) && $amount < 1) { return response()->json(['error'=>'Minimum withdrawal for Balance is 1'],400); }
 
     // JWT
     $jwtToken = $request->header('Authorization');
@@ -1199,7 +1201,7 @@ public function getMembership(Request $request)
             if (($cekSaldo < 50 && $cekBeku == 0)) {
                 return response()->json([
                     'status'  => 'error',
-                    'message' => 'Minimum 50 USDC Required!',
+                    'message' => 'Minimum 50 Balance Required!',
                 ], 400);
             }
 
