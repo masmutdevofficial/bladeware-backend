@@ -1195,16 +1195,16 @@ public function getMembership(Request $request)
             $cekSaldo = $finance->saldo;
             $cekBeku  = $finance->saldo_beku;
 
-            //Jika saldo < 20 dan saldo_beku == 0 → Minimum 20 USDC Required
-            if (($cekSaldo < 20 && $cekBeku == 0)) {
+            //Jika saldo < 50 dan saldo_beku == 0 → Minimum 50 USDC Required
+            if (($cekSaldo < 50 && $cekBeku == 0)) {
                 return response()->json([
                     'status'  => 'error',
-                    'message' => 'Minimum 20 USDC Required!',
+                    'message' => 'Minimum 50 USDC Required!',
                 ], 400);
             }
 
-            // Aturan baru: jika saldo < 20 DAN saldo_beku < 0 → tolak
-            if (($cekSaldo < 20 && $cekBeku < 0)) {
+            // Aturan baru: jika saldo < 50 DAN saldo_beku < 0 → tolak
+            if (($cekSaldo < 50 && $cekBeku < 0)) {
                 return response()->json([
                     'status' => 'error',
                     'message' => 'Please check on Apps Record to submit your Pending Data.',
@@ -1639,7 +1639,7 @@ public function getMembership(Request $request)
             if (($saldo - $price) < 0 && $saldo < 0) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'You need minimum 20 USDC balance to start boost',
+                    'message' => 'Insufficient Balance',
                 ], 400);
             }
     
