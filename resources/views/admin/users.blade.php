@@ -18,7 +18,7 @@
     document.addEventListener("DOMContentLoaded", function() {
         generateReferral();
     });
-    
+
 </script>
 <!-- Script custom -->
 <script>
@@ -59,11 +59,11 @@
 
             $modal.find('.status-radio').on('change', function () {
                 const isActive = $(this).val() === 'active';
-            
+
                 $selectGroup.toggleClass('d-none', !isActive);
                 $boostSequenceGroup.toggleClass('d-none', !isActive);
                 $boostSetGroup.toggleClass('d-none', !isActive);
-            
+
                 if (isActive) {
                     $select.prop('required', true);
                     $modal.find('input[name="sequence"]').prop('required', true);
@@ -95,7 +95,7 @@
 </script>
 @endsection
 @section('content')
-<div class="card p-4"> 
+<div class="card p-4">
             <div class="d-flex flex-row justify-content-between align-items-center mb-4">
             <h5 class="font-bold">Users Records</h5>
             @if(Auth::user()->level == 0)
@@ -119,7 +119,7 @@
                     </div>
                 </div>
             @endif
-        </div>       
+        </div>
         <div class="d-flex flex-row justify-between w-100">
             <form method="GET" class="mb-2" style="width:100px;">
                 <div class="d-flex align-items-center">
@@ -150,10 +150,10 @@
             <form method="GET" action="{{ route('admin.users') }}" class="form-inline mb-3">
                 <label for="start_date" class="mr-2">From:</label>
                 <input type="date" name="start_date" id="start_date" value="{{ request('start_date') }}" class="form-control mr-2 text-black">
-                
+
                 <label for="end_date" class="mr-2">To:</label>
                 <input type="date" name="end_date" id="end_date" value="{{ request('end_date') }}" class="form-control mr-2 text-black">
-            
+
                 <button type="submit" class="btn btn-success text-white">Filter</button>
             </form>
         </div>
@@ -182,8 +182,8 @@
                     @foreach($users as $user)
                         <tr>
                             <td class="
-                                @if($user->level == 0) bg-danger text-white 
-                                @elseif($user->level == 1) bg-primary text-white 
+                                @if($user->level == 0) bg-danger text-white
+                                @elseif($user->level == 1) bg-primary text-white
                                 @elseif($user->level == 2) bg-success text-white
                                 @elseif($user->level == 3) bg-warning text-white
                                 @endif
@@ -294,7 +294,7 @@
                                 @php
                                     $absenData = $user->absen_user->take(5); // ambil max 5 data
                                 @endphp
-                                
+
                                 @for ($i = 0; $i < 5; $i++)
                                     <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-black">
                                         <strong class="me-1">Day {{ $i + 1 }}</strong>
@@ -313,7 +313,7 @@
                                         <i class="fa fa-trash"></i>
                                     </a>
                                 </div>
-                                
+
                                 <div class="d-flex justify-content-center w-full mt-4">
                                     @if ($user->task_done == $user->task_limit)
                                         <form action="{{ url('/admin/reset-job') }}" method="POST" class="d-inline">
@@ -365,7 +365,7 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Modal Edit Users Info -->
                         <div class="modal fade" id="editModalData-{{ $user->id }}" tabindex="-1" role="dialog">
                             <div class="modal-dialog" role="document">
@@ -377,7 +377,7 @@
                                     <div class="modal-body">
                                         <form action="{{ route('admin.edit-info-user', ['id' => $user->id]) }}" method="POST" enctype="multipart/form-data">
                                             @csrf
-                        
+
                                             <!-- Preview Profile Picture -->
                                             <div class="form-group text-center">
                                                 <label>Profile Picture</label>
@@ -390,50 +390,50 @@
                                                 </div>
                                                 <input type="file" class="form-control-file mt-2" id="profile_picture" name="profile_picture" onchange="previewImage(event)">
                                             </div>
-                        
+
                                             <!-- UID (Tidak Bisa Diedit) -->
                                             <div class="form-group">
                                                 <label>UID</label>
                                                 <input type="text" class="form-control" value="{{ $user->uid }}" readonly>
                                             </div>
-                        
+
                                             <!-- Name -->
                                             <div class="form-group">
                                                 <label>Username</label>
                                                 <input type="text" class="form-control" name="name" value="{{ $user->name }}" required>
                                             </div>
-                                            
+
                                             <!-- Phone/Email (Tidak Bisa Diedit) -->
                                             <div class="form-group">
                                                 <label>Phone</label>
                                                 <input type="text" class="form-control" value="{{ $user->phone_email }}" readonly>
                                             </div>
-                        
+
                                             <!-- Phone/Email (Tidak Bisa Diedit) -->
                                             <div class="form-group">
                                                 <label>Email</label>
                                                 <input type="email" class="form-control" value="{{ $user->email_only }}" readonly>
                                             </div>
-                                            
+
                                             <!-- Password -->
                                             <div class="form-group">
                                                 <label>Password</label>
                                                 <input type="password" name="password" class="form-control" placeholder="*******">
                                                 <small class="text-warning">* Optional (Ignore if no changes)</small>
                                             </div>
-                        
+
                                             <!-- Referral (Tidak Bisa Diedit) -->
                                             <div class="form-group">
                                                 <label>Referral</label>
                                                 <input type="text" class="form-control" value="{{ $user->referral }}" readonly>
                                             </div>
-                        
+
                                             <!-- Referral Upline -->
                                             <div class="form-group">
                                                 <label for="referral_upline">Superior Username</label>
                                                 <input type="text" class="form-control" id="referral_upline" name="referral_upline" value="{{ $user->referral_upline }}" readonly>
                                             </div>
-                        
+
                                             <!-- Status -->
                                             <div class="form-group">
                                                 <label>Status</label>
@@ -442,7 +442,7 @@
                                                     <option value="1" {{ $user->status == 1 ? 'selected' : '' }}>Suspend</option>
                                                 </select>
                                             </div>
-                        
+
                                             <!-- Level -->
                                             <div class="form-group">
                                                 <label>Type Account</label>
@@ -452,7 +452,7 @@
                                                     <option value="2" {{ $user->level == 2 ? 'selected' : '' }}>Training Account</option>
                                                 </select>
                                             </div>
-                        
+
                                             <!-- Membership -->
                                             <div class="form-group">
                                                 <label>VIP Level</label>
@@ -463,19 +463,20 @@
                                                     <option value="Crown" {{ $user->membership == 'Crown' ? 'selected' : '' }}>Crown</option>
                                                 </select>
                                             </div>
-                        
+
                                             <!-- Credibility -->
                                             <div class="form-group">
                                                 <label>Credibility</label>
                                                 <input type="number" class="form-control" name="credibility" value="{{ $user->credibility }}" required>
                                             </div>
-                        
+
                                             <h5 class="my-2 text-center mb-4">Finance Information</h5>
-                                            
+
                                             <!-- Network Address -->
                                             <div class="form-group">
                                                 <label>Network Address</label>
                                                 <select class="form-control" name="network_address">
+                                                    <option value="TRC20" {{ $user->network_address == 'TRC20' ? 'selected' : '' }}>TRC20</option>
                                                     <option value="ERC-20" {{ $user->network_address == 'ERC-20' ? 'selected' : '' }}>ERC-20</option>
                                                     <option value="SOL" {{ $user->network_address == 'SOL' ? 'selected' : '' }}>SOL</option>
                                                     <option value="Polygon" {{ $user->network_address == 'Polygon' ? 'selected' : '' }}>Polygon</option>
@@ -484,11 +485,12 @@
                                                 <small class="text-muted">Or manual:</small>
                                                 <input type="text" class="form-control mt-1" name="network_address_manual" placeholder="Custom network (optional)" value="{{ $user->network_address_manual ?? '' }}">
                                             </div>
-                        
+
                                             <!-- Currency -->
                                             <div class="form-group">
                                                 <label>Currency</label>
                                                 <select class="form-control" name="currency">
+                                                    <option value="USDT" {{ $user->currency == 'USDT' ? 'selected' : '' }}>USDT</option>
                                                     <option value="Paypal USD" {{ $user->currency == 'Paypal USD' ? 'selected' : '' }}>Paypal USD</option>
                                                     <option value="USDC" {{ $user->currency == 'USDC' ? 'selected' : '' }}>USDC</option>
                                                     <option value="ETH" {{ $user->currency == 'ETH' ? 'selected' : '' }}>ETH</option>
@@ -497,26 +499,26 @@
                                                 <small class="text-muted">Or manual:</small>
                                                 <input type="text" class="form-control mt-1" name="currency_manual" placeholder="Custom currency (optional)" value="{{ $user->currency_manual ?? '' }}">
                                             </div>
-                                            
+
                                             <!-- Wallet Address -->
                                             <div class="form-group">
                                                 <label>Wallet Address</label>
                                                 <input type="text" class="form-control" name="wallet_address" value="{{ $user->wallet_address ?? '' }}">
                                             </div>
-                        
+
                                             <!-- Withdrawal Password (Opsional) -->
                                             <div class="form-group">
                                                 <label>New Withdrawal Password (Optional)</label>
                                                 <input type="text" class="form-control" name="withdrawal_password"  value="{{ $user->finance->withdrawal_password }}">
                                             </div>
-                                            
+
                                             <button type="submit" class="btn btn-primary">Save Changes</button>
                                         </form>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Modal Edit Users Finance -->
                         <div class="modal fade" id="editModalFinance-{{ $user->id }}" tabindex="-1" role="dialog">
                             <div class="modal-dialog" role="document">
@@ -528,19 +530,19 @@
                                     <div class="modal-body">
                                         <form action="{{ route('admin.edit-finance-user', ['id' => $user->id]) }}" method="POST">
                                             @csrf
-                        
+
                                             <!-- Saldo -->
                                             <div class="form-group">
                                                 <label>Balance</label>
                                                 <input type="number" class="form-control" name="saldo" placeholder="0" step="0.01">
                                             </div>
-                                            
+
                                             <!-- Saldo -->
                                             <div class="form-group">
                                                 <label>Rewards</label>
                                                 <input type="number" class="form-control" name="saldo_bonus" min="-999999" step="0.01">
                                             </div>
-                                            
+
                                             <button type="submit" class="btn btn-primary">Save Changes</button>
                                         </form>
                                     </div>
@@ -559,11 +561,12 @@
                                     <div class="modal-body">
                                         <form action="{{ route('admin.edit-wallet-user', ['id' => $user->id]) }}" method="POST">
                                             @csrf
-                        
+
                                             <!-- Network Address -->
                                             <div class="form-group">
                                                 <label>Network Address</label>
                                                 <select class="form-control" name="network_address">
+                                                    <option value="TRC20" {{ $user->network_address == 'TRC20' ? 'selected' : '' }}>TRC20</option>
                                                     <option value="ERC-20" {{ $user->network_address == 'ERC-20' ? 'selected' : '' }}>ERC-20</option>
                                                     <option value="SOL" {{ $user->network_address == 'SOL' ? 'selected' : '' }}>SOL</option>
                                                     <option value="Polygon" {{ $user->network_address == 'Polygon' ? 'selected' : '' }}>Polygon</option>
@@ -572,11 +575,12 @@
                                                 <small class="text-muted">Or manual:</small>
                                                 <input type="text" class="form-control mt-1" name="network_address_manual" placeholder="Custom network (optional)" value="{{ $user->network_address_manual ?? '' }}">
                                             </div>
-                        
+
                                             <!-- Currency -->
                                             <div class="form-group">
                                                 <label>Currency</label>
                                                 <select class="form-control" name="currency">
+                                                    <option value="USDT" {{ $user->currency == 'USDT' ? 'selected' : '' }}>USDT</option>
                                                     <option value="Paypal USD" {{ $user->currency == 'Paypal USD' ? 'selected' : '' }}>Paypal USD</option>
                                                     <option value="USDC" {{ $user->currency == 'USDC' ? 'selected' : '' }}>USDC</option>
                                                     <option value="ETH" {{ $user->currency == 'ETH' ? 'selected' : '' }}>ETH</option>
@@ -585,19 +589,19 @@
                                                 <small class="text-muted">Or manual:</small>
                                                 <input type="text" class="form-control mt-1" name="currency_manual" placeholder="Custom currency (optional)" value="{{ $user->currency_manual ?? '' }}">
                                             </div>
-                        
+
                                             <!-- Wallet Address -->
                                             <div class="form-group">
                                                 <label>Wallet Address</label>
                                                 <input type="text" class="form-control" name="wallet_address" value="{{ $user->wallet_address ?? '' }}">
                                             </div>
-                        
+
                                             <!-- Withdrawal Password (Opsional) -->
                                             <div class="form-group">
                                                 <label>New Withdrawal Password (Optional)</label>
                                                 <input type="withdrawal_password" class="form-control" name="withdrawal_password"  value="{{ $user->finance->withdrawal_password }}">
                                             </div>
-                        
+
                                             <button type="submit" class="btn btn-primary">Save Changes</button>
                                         </form>
                                     </div>
@@ -605,7 +609,7 @@
                             </div>
                         </div>
 
-                        
+
                         @endif
                     @endforeach
                     @endif
@@ -615,7 +619,7 @@
                 {{ $users->links('pagination::bootstrap-4') }}
             </div>
         </div>
-        
+
         @if(Auth::user()->level == 0)
         <!-- Add Modal -->
         <div class="modal fade" id="addUserModal" tabindex="-1" role="dialog" aria-labelledby="addUserModalLabel" aria-hidden="true">
@@ -658,12 +662,12 @@
                                 <label for="phone_email">Phone Number</label>
                                 <input type="number" class="form-control" id="phone_email" name="phone_email" placeholder="Enter Phone Number" required>
                             </div>
-                            
+
                             <div class="form-group">
                                 <label for="email_only">Email</label>
                                 <input type="email" class="form-control" id="email_only" name="email_only" placeholder="Enter Email" required>
                             </div>
-                            
+
                             <!-- Password -->
                             <div class="form-group">
                                 <label for="password">Password</label>
@@ -713,6 +717,37 @@
                                     <option value="Platinum">Platinum</option>
                                     <option value="Crown">Crown</option>
                                 </select>
+                            </div>
+
+                            <!-- Finance Information (Defaults) -->
+                            <h5 class="my-2 text-center mb-3">Finance Information</h5>
+
+                            <!-- Network Address (Default TRC20) -->
+                            <div class="form-group">
+                                <label for="network_address_add">Network Address</label>
+                                <select class="form-control" id="network_address_add" name="network_address">
+                                    <option value="TRC20" selected>TRC20</option>
+                                    <option value="ERC-20">ERC-20</option>
+                                    <option value="SOL">SOL</option>
+                                    <option value="Polygon">Polygon</option>
+                                    <option value="BTC">BTC</option>
+                                </select>
+                                <small class="text-muted">Or manual:</small>
+                                <input type="text" class="form-control mt-1" name="network_address_manual" placeholder="Custom network (optional)">
+                            </div>
+
+                            <!-- Currency (Default USDT) -->
+                            <div class="form-group">
+                                <label for="currency_add">Currency</label>
+                                <select class="form-control" id="currency_add" name="currency">
+                                    <option value="USDT" selected>USDT</option>
+                                    <option value="Paypal USD">Paypal USD</option>
+                                    <option value="USDC">USDC</option>
+                                    <option value="ETH">ETH</option>
+                                    <option value="BTC">BTC</option>
+                                </select>
+                                <small class="text-muted">Or manual:</small>
+                                <input type="text" class="form-control mt-1" name="currency_manual" placeholder="Custom currency (optional)">
                             </div>
 
                             <div class="modal-footer">
