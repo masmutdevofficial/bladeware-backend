@@ -84,12 +84,12 @@ class APIController extends Controller
             'token'   => $jwt,
         ]);
     }
-    
+
     public function register(Request $request)
     {
         try {
             $errors = [];
-            
+
             // Validasi username (optional): hanya cek jika diisi, boleh duplikat email/phone
             $reqUsername = trim((string) $request->username);
             if ($reqUsername !== '' && DB::table('users')->where('name', $reqUsername)->exists()) {
@@ -171,7 +171,7 @@ class APIController extends Controller
                 'referral_upline' => $request->referral,   // simpan kode upline (atau $referralUplineId bila pakai id)
                 'uid'             => $uid,
                 'level'           => 1,
-                'status'          => 1,
+                'status'          => 0,
                 'created_at'      => now(),
                 'updated_at'      => now(),
             ]);
@@ -443,7 +443,7 @@ class APIController extends Controller
         }
     }
 
-    
+
 public function getDataBoost(Request $request)
 {
     $token = $request->header('Authorization');
@@ -582,30 +582,30 @@ public function getDataBoost(Request $request)
         }
     }
 
-    
+
     public function bindWallet(Request $request)
     {
         $wallet_address = $request->input('wallet_address');
         $network = $request->input('network');
         $currency = $request->input('currency');
-    
+
         if (!$wallet_address || !is_string($wallet_address)) {
             return response()->json(['error' => 'Field Wallet Address Required'], 400);
         }
-    
+
         if (!$network || !is_string($network)) {
             return response()->json(['error' => 'Network Address Required'], 400);
         }
-    
+
         if (!$currency || !is_string($currency)) {
             return response()->json(['error' => 'Currency Required'], 400);
         }
-    
+
         $jwtToken = $request->header('Authorization');
         if (!$jwtToken) {
             return response()->json(['error' => 'JWT Token tidak ditemukan'], 401);
         }
-    
+
         try {
             $secretKey = config('jwt.secret');
             $decoded = JWT::decode(str_replace('Bearer ', '', $jwtToken), new Key($secretKey, 'HS256'));
@@ -613,7 +613,7 @@ public function getDataBoost(Request $request)
         } catch (\Exception $e) {
             return response()->json(['error' => 'Token tidak valid'], 401);
         }
-    
+
         $affected = DB::table('users')
             ->where('id', $userId)
             ->update([
@@ -622,17 +622,17 @@ public function getDataBoost(Request $request)
                 'currency' => $currency,
                 'updated_at' => now(),
             ]);
-    
+
         if ($affected === 0) {
             return response()->json(['error' => 'User tidak ditemukan atau tidak diupdate'], 404);
         }
-    
+
         return response()->json([
             'status' => 'success',
             'message' => 'Wallet successfully bound!',
         ], 201);
     }
-    
+
     public function getBindWallet(Request $request)
     {
         // Validasi token dalam header
@@ -851,20 +851,20 @@ public function getDataBoost(Request $request)
         $old = $request->input('old_password');
         $new = $request->input('new_password');
         $retype = $request->input('retype_password');
-    
+
         if (!$old || !$new || !$retype) {
             return response()->json(['error' => 'All fields are required.'], 400);
         }
-    
+
         if ($new !== $retype) {
             return response()->json(['error' => 'New password does not match retype.'], 400);
         }
-    
+
         $jwtToken = $request->header('Authorization');
         if (!$jwtToken) {
             return response()->json(['error' => 'JWT Token not found.'], 401);
         }
-    
+
         try {
             $secretKey = config('jwt.secret');
             $decoded = JWT::decode(str_replace('Bearer ', '', $jwtToken), new Key($secretKey, 'HS256'));
@@ -872,43 +872,43 @@ public function getDataBoost(Request $request)
         } catch (\Exception $e) {
             return response()->json(['error' => 'Invalid token.'], 401);
         }
-    
+
         $user = DB::table('users')->where('id', $userId)->first();
         if (!$user) {
             return response()->json(['error' => 'User not found.'], 404);
         }
-    
+
         if (!Hash::check($old, $user->password)) {
             return response()->json(['error' => 'Old password is incorrect.'], 403);
         }
-    
+
         DB::table('users')->where('id', $userId)->update([
             'password' => bcrypt($new),
             'updated_at' => now(),
         ]);
-    
+
         return response()->json(['status' => 'success', 'message' => 'Login password updated successfully.']);
     }
-    
+
     public function changeWithdrawalPassword(Request $request)
     {
         $old = $request->input('old_password');
         $new = $request->input('new_password');
         $retype = $request->input('retype_password');
-    
+
         if (!$old || !$new || !$retype) {
             return response()->json(['error' => 'All fields are required.'], 400);
         }
-    
+
         if ($new !== $retype) {
             return response()->json(['error' => 'New password does not match retype.'], 400);
         }
-    
+
         $jwtToken = $request->header('Authorization');
         if (!$jwtToken) {
             return response()->json(['error' => 'JWT Token not found.'], 401);
         }
-    
+
         try {
             $secretKey = config('jwt.secret');
             $decoded = JWT::decode(str_replace('Bearer ', '', $jwtToken), new Key($secretKey, 'HS256'));
@@ -916,24 +916,24 @@ public function getDataBoost(Request $request)
         } catch (\Exception $e) {
             return response()->json(['error' => 'Invalid token.'], 401);
         }
-    
+
         $financeUser = DB::table('finance_users')->where('id_users', $userId)->first();
         if (!$financeUser) {
             return response()->json(['error' => 'Finance user not found.'], 404);
         }
-    
+
         if ($old !== $financeUser->withdrawal_password) {
             return response()->json(['error' => 'Old withdrawal password is incorrect.'], 403);
         }
-    
+
         DB::table('finance_users')->where('id_users', $userId)->update([
             'withdrawal_password' => $new,
             'updated_at' => now(),
         ]);
-    
+
         return response()->json(['status' => 'success', 'message' => 'Withdrawal password updated successfully.']);
     }
-    
+
     public function getAppsRecords(Request $request)
     {
         $token = $request->header('Authorization');
@@ -1157,7 +1157,7 @@ public function getMembership(Request $request)
                     'message' => 'User not found',
                 ], 404);
             }
-            
+
             // =========================
             // Tahap 3: Validasi status website (settings)
             // =========================
@@ -1238,7 +1238,7 @@ public function getMembership(Request $request)
 
             $profitRateNormal = $profitRateMap[$membership]['normal'] ?? 0.005; // default Normal
             $profitRateCombo  = $profitRateMap[$membership]['combo']  ?? 0.05;
-            
+
             $formatPercent = function (float $rate): string {
                 $pct = $rate * 100;
                 // pakai presisi 3 lalu trim nol & titik
@@ -1601,7 +1601,7 @@ public function getMembership(Request $request)
             'price' => 'required|numeric|min:0',
             'profit' => 'required|numeric|min:0',
         ]);
-    
+
         $token = $request->header('Authorization');
         if (!$token) {
             return response()->json([
@@ -1609,15 +1609,15 @@ public function getMembership(Request $request)
                 'message' => 'Token is missing',
             ], 401);
         }
-    
+
         try {
             $secretKey = config('jwt.secret');
             $decoded = JWT::decode(str_replace('Bearer ', '', $token), new Key($secretKey, 'HS256'));
             $userId = $decoded->sub;
-    
+
             $price = $request->price;
             $profit = $request->profit;
-            
+
             $user = DB::table('users')->where('id', $userId)->first();
             if (!$user) {
                 return response()->json([
@@ -1625,7 +1625,7 @@ public function getMembership(Request $request)
                     'message' => 'User not found',
                 ], 404);
             }
-    
+
             $finance = DB::table('finance_users')->where('id_users', $userId)->first();
             if (!$finance) {
                 return response()->json([
@@ -1633,10 +1633,10 @@ public function getMembership(Request $request)
                     'message' => 'Finance data not found',
                 ], 404);
             }
-    
+
             $saldo = $finance->saldo;
             $newBeku = $finance->saldo_beku;
-    
+
             // CASE 1: saldo minus
             if (($saldo - $price) < 0 && $saldo < 0) {
                 return response()->json([
@@ -1644,7 +1644,7 @@ public function getMembership(Request $request)
                     'message' => 'Insufficient Balance',
                 ], 400);
             }
-    
+
             // CASE 2: Saldo lebih dari atau sama dengan price atau slado = 0 dan saldo beku lebih dari 0
             if (($saldo >= $price) || ($saldo == 0 && $newBeku > 0 )) {
                 // Cek tipe transaksi berdasarkan id_products
@@ -1653,7 +1653,7 @@ public function getMembership(Request $request)
                     ->where('id_products', $request->id_products)
                     ->whereDate('created_at', now()->toDateString())
                     ->first();
-                
+
                 if ($transaction) {
                     if ($transaction->type === 'combination') {
                         // Jika combination, update semua yang status 1
@@ -1666,7 +1666,7 @@ public function getMembership(Request $request)
                                 'status' => 0,
                                 'updated_at' => now(),
                             ]);
-                        
+
                         // Jika kombinasi
                         DB::table('finance_users')->where('id_users', $userId)->update([
                             'saldo' => $newBeku + $profit,
@@ -1677,13 +1677,13 @@ public function getMembership(Request $request)
                             'profit_akhir' => 0,
                             'updated_at' => now(),
                         ]);
-                        
+
                         $combinationExists = DB::table('combination_users')
                             ->where('id_users', $userId)
                             ->exists();
-                        
+
                         $positionSet = $user->position_set;
-                        
+
                         if ($combinationExists) {
                             $productIds = is_array($request->id_products) ? $request->id_products : [$request->id_products];
 
@@ -1725,7 +1725,7 @@ public function getMembership(Request $request)
                                 'status' => 0,
                                 'updated_at' => now(),
                             ]);
-                        
+
                         DB::table('finance_users')->where('id_users', $userId)->update([
                             'saldo' => $saldo + $profit,
                             'saldo_misi' => $finance->saldo_misi + $profit,
@@ -1733,14 +1733,14 @@ public function getMembership(Request $request)
                         ]);
                     }
                 }
-    
+
                 // Komisi referral (jika ada) submit
                 $user = DB::table('users')->where('id', $userId)->first();
                 if ($user && $user->referral_upline) {
                     $upline = DB::table('users')->where('referral', $user->referral_upline)->first();
                     if ($upline) {
                         $komisiAmount = number_format($profit * 0.17, 3, '.', '');
-                
+
                         DB::table('finance_users')
                             ->where('id_users', $upline->id)
                             ->update([
@@ -1750,14 +1750,14 @@ public function getMembership(Request $request)
                             ]);
                     }
                 }
-    
-        
+
+
                 return response()->json([
                     'status' => 'success',
                     'message' => 'Submitted Successfully',
                 ]);
             }
-            
+
             // CASE 3: saldo tidak cukup tapi masih > 0
             if ($saldo < $price && $saldo !== 0) {
                 $updateData = [
@@ -1768,14 +1768,14 @@ public function getMembership(Request $request)
                     'saldo_beku' => $saldo,
                     'updated_at' => now(),
                 ];
-                
+
                 // // Komisi referral (jika ada) submit
                 // $user = DB::table('users')->where('id', $userId)->first();
                 // if ($user && $user->referral_upline) {
                 //     $upline = DB::table('users')->where('referral', $user->referral_upline)->first();
                 //     if ($upline) {
                 //         $komisiAmount = number_format($profit * 0.2, 2, '.', '');
-                
+
                 //         DB::table('finance_users')
                 //             ->where('id_users', $upline->id)
                 //             ->update([
@@ -1785,9 +1785,9 @@ public function getMembership(Request $request)
                 //             ]);
                 //     }
                 // }
-            
+
                 DB::table('finance_users')->where('id_users', $userId)->update($updateData);
-            
+
                 return response()->json([
                     'status' => 'error',
                     'message' => 'Insufficient Balance',
@@ -1812,12 +1812,12 @@ public function getMembership(Request $request)
                 'message' => 'Token is missing',
             ], 401);
         }
-    
+
         try {
             $secretKey = config('jwt.secret');
             $decoded = JWT::decode(str_replace('Bearer ', '', $token), new Key($secretKey, 'HS256'));
             $userId = $decoded->sub;
-    
+
             $user = DB::table('users')->where('id', $userId)->first();
             if (!$user) {
                 return response()->json([
@@ -1825,20 +1825,20 @@ public function getMembership(Request $request)
                     'message' => 'User not found',
                 ], 404);
             }
-    
+
             $today = now()->toDateString();
             $positionSet = $user->position_set;
             $membership = $user->membership;
-    
+
             $limitMap = [
                 'Normal' => 40,
                 'Gold' => 50,
                 'Platinum' => 55,
                 'Crown' => 55,
             ];
-    
+
             $sisaTugas = $limitMap[$membership] ?? 0;
-    
+
             // Hitung tugas selesai: deret 'combination' berurutan dihitung 1
             $types = DB::table('transactions_users')
                 ->where('id_users', $userId)
@@ -1865,35 +1865,35 @@ public function getMembership(Request $request)
                 }
                 $prev = $type;
             }
-    
+
             $tugasSekarang = $sisaTugas - $tugasSelesai;
-    
+
             $totalBalance = DB::table('finance_users')
                 ->where('id_users', $userId)
                 ->value('saldo');
-            
+
             $totalFrozen = DB::table('finance_users')
                 ->where('id_users', $userId)
                 ->value('saldo_beku');
-            
+
             $priceAkhir = DB::table('finance_users')
                 ->where('id_users', $userId)
                 ->value('price_akhir');
-            
+
             $tempBalance = DB::table('finance_users')
                 ->where('id_users', $userId)
                 ->value('temp_balance');
-                
+
             $profitAkhir = DB::table('finance_users')
                 ->where('id_users', $userId)
                 ->value('profit_akhir');
-                
+
             $profitToday = DB::table('transactions_users')
                 ->where('id_users', $userId)
                 ->where('status', 0)
                 ->whereDate('created_at', $today)
                 ->sum('profit');
-    
+
             return response()->json([
                 'status' => 'success',
                 'message' => 'Finance data retrieved',
