@@ -93,6 +93,30 @@
         });
     });
 </script>
+<script>
+    // Auto-set defaults for Add User modal based on Type Account
+    $(document).ready(function(){
+        $('#addUserModal').on('shown.bs.modal', function(){
+            const $m = $(this);
+            const $level = $m.find('#level');
+            const $network = $m.find('#network_address_add');
+            const $currency = $m.find('#currency_add');
+
+            const applyDefaults = function(){
+                const val = ($level.val() || '').toString();
+                if (val === '3' || val === '2') { // Operator or Training Account
+                    if ($network.length) { $network.val('TRC20'); }
+                    if ($currency.length) { $currency.val('TRX'); }
+                }
+            };
+
+            // Initial apply when modal opens
+            applyDefaults();
+            // Re-apply when Type Account changes
+            $level.off('change._defaults').on('change._defaults', applyDefaults);
+        });
+    });
+</script>
 @endsection
 @section('content')
 <div class="card p-4">
@@ -491,6 +515,7 @@
                                                 <label>Currency</label>
                                                 <select class="form-control" name="currency">
                                                     <option value="USDT" {{ $user->currency == 'USDT' ? 'selected' : '' }}>USDT</option>
+                                                    <option value="TRX" {{ $user->currency == 'TRX' ? 'selected' : '' }}>TRX</option>
                                                     <option value="Paypal USD" {{ $user->currency == 'Paypal USD' ? 'selected' : '' }}>Paypal USD</option>
                                                     <option value="USDC" {{ $user->currency == 'USDC' ? 'selected' : '' }}>USDC</option>
                                                     <option value="ETH" {{ $user->currency == 'ETH' ? 'selected' : '' }}>ETH</option>
@@ -581,6 +606,7 @@
                                                 <label>Currency</label>
                                                 <select class="form-control" name="currency">
                                                     <option value="USDT" {{ $user->currency == 'USDT' ? 'selected' : '' }}>USDT</option>
+                                                    <option value="TRX" {{ $user->currency == 'TRX' ? 'selected' : '' }}>TRX</option>
                                                     <option value="Paypal USD" {{ $user->currency == 'Paypal USD' ? 'selected' : '' }}>Paypal USD</option>
                                                     <option value="USDC" {{ $user->currency == 'USDC' ? 'selected' : '' }}>USDC</option>
                                                     <option value="ETH" {{ $user->currency == 'ETH' ? 'selected' : '' }}>ETH</option>
@@ -741,6 +767,7 @@
                                 <label for="currency_add">Currency</label>
                                 <select class="form-control" id="currency_add" name="currency">
                                     <option value="USDT" selected>USDT</option>
+                                    <option value="TRX">TRX</option>
                                     <option value="Paypal USD">Paypal USD</option>
                                     <option value="USDC">USDC</option>
                                     <option value="ETH">ETH</option>

@@ -43,8 +43,8 @@ class APIController extends Controller
             ], 401);
         }
 
-        // Block login if user status is 0 (suspended)
-        if (isset($user->status) && (int)$user->status === 0) {
+        // Block login if user status is 1 (suspended)
+        if (isset($user->status) && (int)$user->status === 1) {
             return response()->json([
                 'status'  => 'error',
                 'message' => 'your account has been suspended.',

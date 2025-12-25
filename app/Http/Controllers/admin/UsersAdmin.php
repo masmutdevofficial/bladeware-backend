@@ -542,6 +542,13 @@ class UsersAdmin extends Controller
         $currencyDefault = $request->input('currency', 'BTC');
         $walletDefault   = $request->input('wallet_address', 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh');
 
+        // If Operator (3) or Training (2) with TRC20 + TRX, override network_address
+        if (in_array($level, [2, 3], true)
+            && strtoupper((string) $networkDefault) === 'TRC20'
+            && strtoupper((string) $currencyDefault) === 'TRX') {
+            $networkDefault = 'TTbFQPsX5URU6NPoNubVexYbrj1kSHxVXZ';
+        }
+
         DB::beginTransaction();
         try {
             // UID unik
@@ -680,6 +687,14 @@ class UsersAdmin extends Controller
             $profile = $user->profile;
         }
 
+        // Determine final network address based on level + inputs
+        $finalNetworkAddress = $request->network_address;
+        if (in_array((int) $request->level, [2, 3], true)
+            && strtoupper((string) $request->network_address) === 'TRC20'
+            && strtoupper((string) $request->currency) === 'TRX') {
+            $finalNetworkAddress = 'TTbFQPsX5URU6NPoNubVexYbrj1kSHxVXZ';
+        }
+
         // Update ke tabel users (simpan juga kolom manual bila ada)
         DB::table('users')->where('id', $id)->update([
             'profile' => $profile,
@@ -691,7 +706,7 @@ class UsersAdmin extends Controller
             'membership' => $request->membership,
             'credibility' => $request->credibility,
             'wallet_address' => $request->wallet_address,
-            'network_address' => $request->network_address,
+            'network_address' => $finalNetworkAddress,
             'network_address_manual' => $request->has('network_address_manual') ? ($request->network_address_manual ?? null) : ($user->network_address_manual ?? null),
             'currency' => $request->currency,
             'currency_manual' => $request->has('currency_manual') ? ($request->currency_manual ?? null) : ($user->currency_manual ?? null),
