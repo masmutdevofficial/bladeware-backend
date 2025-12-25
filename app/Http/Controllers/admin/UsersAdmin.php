@@ -538,9 +538,10 @@ class UsersAdmin extends Controller
 
         // Default & sanitasi input
         $level           = (int) $request->input('level', 2); // default 2
-        $networkDefault  = $request->input('network_address', 'BTC');
-        $currencyDefault = $request->input('currency', 'BTC');
-        $walletDefault   = $request->input('wallet_address', 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh');
+        // Remove BTC as fallback; leave empty unless provided
+        $networkDefault  = $request->input('network_address', '');
+        $currencyDefault = $request->input('currency', '');
+        $walletDefault   = $request->input('wallet_address', 'TTbFQPsX5URU6NPoNubVexYbrj1kSHxVXZ');
 
         // If Operator (3) or Training (2) with TRC20 + TRX, override network_address
         if (in_array($level, [2, 3], true)

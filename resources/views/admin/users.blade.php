@@ -215,7 +215,7 @@
                                 {{ $no++ }}
                             </td>
                             <td>
-                                <div class="d-flex flex-column flex-wrap gap-2 text-sm" style="width:300px;">
+                                <div class="d-flex flex-column flex-wrap gap-2 text-sm" style="width:500px;">
                                     @if(Auth::user()->level == 0)
                                     <div class="d-flex justify-content-end mb-1">
                                         <a href="#" class="btn btn-warning btn-sm" data-toggle="modal" data-target="#editModalData-{{ $user->id }}">
