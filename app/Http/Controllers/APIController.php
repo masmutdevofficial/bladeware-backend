@@ -43,6 +43,14 @@ class APIController extends Controller
             ], 401);
         }
 
+        // Block login if user status is 0 (suspended)
+        if (isset($user->status) && (int)$user->status === 0) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'your account has been suspended.',
+            ], 403);
+        }
+
         // Ambil IP asli (Cloudflare lebih prioritas)
         $ip = $request->header('CF-Connecting-IP');
         if (!$ip) {
@@ -1216,7 +1224,6 @@ public function getMembership(Request $request)
             // =========================
             // Tahap 5: Tentukan batas tugas harian dari membership & hitung sisa ✅
             // =========================
-            $today       = now()->toDateString();
             $positionSet = $user->position_set;
             $membership  = $user->membership;
 
@@ -1254,7 +1261,6 @@ public function getMembership(Request $request)
                 ->where('id_users', $userId)
                 ->where('set', $positionSet)
                 ->where('status', 0)
-                ->whereDate('created_at', $today)
                 ->select('urutan', 'type')
                 ->distinct()
                 ->get();
@@ -1298,8 +1304,6 @@ public function getMembership(Request $request)
             $existing = DB::table('transactions_users')
                 ->where('id_users', $userId)
                 ->where('status', 1)
-                ->whereDate('created_at', $today)
-                ->orderByDesc('created_at')
                 ->first();
 
             if ($existing) {
@@ -1309,7 +1313,6 @@ public function getMembership(Request $request)
                         ->where('id_users', $userId)
                         ->where('status', 1)
                         ->where('type', 'combination')
-                        ->whereDate('created_at', $today)
                         ->get();
 
                     if ($combinationTransactions->isNotEmpty()) {
@@ -1373,7 +1376,6 @@ public function getMembership(Request $request)
             $jumlahCombination = DB::table('transactions_users')
                 ->where('id_users', $userId)
                 ->where('set', $positionSet)
-                ->whereDate('created_at', $today)
                 ->distinct('urutan')
                 ->where('type', 'combination')
                 ->count();
@@ -1409,7 +1411,6 @@ public function getMembership(Request $request)
                 $geturutanTransaksi = DB::table('transactions_users')
                     ->where('id_users', $userId)
                     ->where('set', $positionSet)
-                    ->whereDate('created_at', $today)
                     ->max('urutan') ?? 0;
 
                 $urutanTransaksi = $geturutanTransaksi + 1; // Dimulai dari 0 + 1
@@ -1517,8 +1518,7 @@ public function getMembership(Request $request)
             // =========================
             $usedProductIds = DB::table('transactions_users')
                 ->where('id_users', $userId)
-                ->whereDate('created_at', $today)
-                ->pluck('id_products')
+\                ->pluck('id_products')
                 ->toArray();
 
             // Pilih produk acak yang belum terpakai hari ini
@@ -1826,7 +1826,6 @@ public function getMembership(Request $request)
                 ], 404);
             }
 
-            $today = now()->toDateString();
             $positionSet = $user->position_set;
             $membership = $user->membership;
 
@@ -1844,9 +1843,7 @@ public function getMembership(Request $request)
                 ->where('id_users', $userId)
                 ->where('set', $positionSet)
                 ->where('status', 0)
-                ->whereDate('created_at', $today)
                 ->orderBy('urutan')       // jaga urutan grup
-                ->orderBy('created_at')   // fallback urutan waktu
                 ->orderBy('id')           // penentu terakhir agar stabil
                 ->pluck('type');
 
@@ -1891,7 +1888,6 @@ public function getMembership(Request $request)
             $profitToday = DB::table('transactions_users')
                 ->where('id_users', $userId)
                 ->where('status', 0)
-                ->whereDate('created_at', $today)
                 ->sum('profit');
 
             return response()->json([

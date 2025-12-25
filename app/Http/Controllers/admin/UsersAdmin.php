@@ -21,7 +21,7 @@ class UsersAdmin extends Controller
         $query = DB::table('users')
             ->select('id', 'uid', 'name', 'phone_email', 'email_only', 'password', 'referral', 'referral_upline', 'profile', 'status', 'level','membership', 'credibility', 'network_address', 'network_address_manual', 'currency', 'currency_manual', 'wallet_address', 'ip_address', 'position_set', 'created_at', 'updated_at')
             ->orderBy('created_at', 'desc');
-        
+
         // Date range filter
         if ($request->has(['start_date', 'end_date']) && $request->start_date && $request->end_date) {
             $query->whereBetween('created_at', [
@@ -29,7 +29,7 @@ class UsersAdmin extends Controller
                 $request->end_date . ' 23:59:59'
             ]);
         }
-        
+
         if ($request->has('search') && $request->search !== null) {
             $keyword = '%' . $request->search . '%';
             $query->where(function($q) use ($keyword) {
@@ -42,10 +42,10 @@ class UsersAdmin extends Controller
                   ->orWhere('referral_upline', 'like', $keyword);
             });
         }
-    
+
         $perPage = $request->input('per_page', 5); // default 5
         $users = $query->paginate($perPage)->withQueryString();
-    
+
         $users->getCollection()->transform(function ($user) {
             $today = now()->toDateString();
 
@@ -56,13 +56,13 @@ class UsersAdmin extends Controller
             if (!empty($user->currency_manual)) {
                 $user->currency = $user->currency_manual;
             }
-        
+
             // Finance
             $user->finance = DB::table('finance_users')
                 ->where('id_users', $user->id)
                 ->select('saldo', 'saldo_beku', 'saldo_misi', 'komisi', 'withdrawal_password', 'updated_at')
                 ->first();
-        
+
             // Combination data (grouped by set and sequence)
             $combRows = DB::table('combination_users')
                 ->where('id_users', $user->id)
@@ -82,7 +82,6 @@ class UsersAdmin extends Controller
             $activeSet = DB::table('transactions_users')
                 ->where('id_users', $user->id)
                 ->where('type', 'combination')
-                ->whereDate('created_at', $today)
                 ->where('status', 1)
                 ->value('set');
             $user->is_combination_active = $activeSet ? true : false;
@@ -118,49 +117,49 @@ class UsersAdmin extends Controller
                 $user->display_sequence = $minSeq + 1; // human-friendly 1-based
                 $user->display_combination_products = array_values(array_unique($grouped[$displaySet][$minSeq] ?? []));
             }
-                
+
             // Upline
             $user->upline_name = DB::table('users')
                 ->where('referral', $user->referral_upline)
                 ->value('name');
-        
+
             // Downlines
             $user->downlines = DB::table('users')
                 ->where('referral_upline', $user->referral)
                 ->select('name')
                 ->get();
-        
+
             // Deposit Summary
             $user->deposit_count = DB::table('deposit_users')
                 ->where('id_users', $user->id)
                 ->count();
-        
+
             $user->deposit_total = DB::table('deposit_users')
                 ->where('id_users', $user->id)
                 ->sum('amount');
-        
+
             // Withdrawal Summary
             $user->withdrawal_count = DB::table('withdrawal_users')
                 ->where('id_users', $user->id)
                 ->count();
-        
+
             $user->withdrawal_total = DB::table('withdrawal_users')
                 ->where('id_users', $user->id)
                 ->sum('amount');
-                
+
             // Product ID terbaru
             $user->latest_product_id = DB::table('transactions_users')
                 ->where('id_users', $user->id)
                 ->orderByDesc('created_at')
                 ->value('id_products');
-                
+
             // Cek apakah user pernah transaksi type 'combination'
             $user->has_combination = !empty($setsAvailable);
-                
+
             $user->absen_user = DB::table('absen_users')
                 ->where('id_users', $user->id)
                 ->get();
-        
+
             // Task Progress (Tugas)
             $limitMap = [
                 'Normal' => 40,
@@ -168,11 +167,11 @@ class UsersAdmin extends Controller
                 'Platinum' => 55,
                 'Crown' => 55,
             ];
-        
+
             $positionSet = $user->position_set;
             $membership = $user->membership;
             $sisaTugas = $limitMap[$membership] ?? 0;
-        
+
             $tugasSelesai = DB::table('transactions_users')
                 ->where('id_users', $user->id)
                 ->where('set', $positionSet)
@@ -180,7 +179,7 @@ class UsersAdmin extends Controller
                 ->whereDate('created_at', $today)
                 ->distinct('urutan')
                 ->count('urutan');
-        
+
             $tugasSekarang = $sisaTugas - $tugasSelesai;
             $user->task_done = $tugasSelesai;
             $user->task_remaining = $tugasSekarang;
@@ -189,128 +188,128 @@ class UsersAdmin extends Controller
         });
 
 
-    
+
         $referrals = DB::table('users')
             ->select('referral', 'name')
             ->get();
-        
+
         $products = DB::table('products')
             ->select('id', 'product_name')
             ->get();
 
         return view('admin.users', compact('users', 'referrals', 'products'));
     }
-    
+
     public function exportPDF()
     {
         $today = now()->toDateString();
-    
+
         $users = DB::table('users')
             ->select('id', 'uid', 'name', 'phone_email', 'email_only', 'password', 'referral', 'referral_upline', 'profile', 'status', 'level', 'membership', 'credibility', 'network_address', 'network_address_manual', 'currency', 'currency_manual', 'wallet_address', 'ip_address', 'position_set', 'created_at', 'updated_at')
             ->orderBy('created_at', 'desc')
             ->get();
-    
+
         $limitMap = [
             'Normal' => 40,
             'Gold' => 50,
             'Platinum' => 55,
             'Crown' => 55,
         ];
-    
+
         $users->transform(function ($user) use ($today, $limitMap) {
             // Finance
             $user->finance = DB::table('finance_users')
                 ->where('id_users', $user->id)
                 ->select('saldo', 'saldo_beku', 'saldo_misi', 'komisi', 'withdrawal_password', 'updated_at')
                 ->first();
-    
+
             // Combination
             $user->combination = DB::table('combination_users')
                 ->where('id_users', $user->id)
                 ->select('id_produk', 'sequence', 'set_boost')
                 ->get();
-    
+
             $user->combination_product = DB::table('combination_users')
                 ->where('id_users', $user->id)
                 ->pluck('id_produk')
                 ->toArray();
-    
+
             $user->combination_data = DB::table('combination_users')
                 ->where('id_users', $user->id)
                 ->select('id_produk', 'sequence', 'set_boost')
                 ->first();
-    
+
             // Upline
             $user->upline_name = DB::table('users')
                 ->where('referral', $user->referral_upline)
                 ->value('name');
-    
+
             // Downlines
             $user->downlines = DB::table('users')
                 ->where('referral_upline', $user->referral)
                 ->select('name')
                 ->get();
-    
+
             // Deposit / Withdraw
             $user->deposit_count = DB::table('deposit_users')
                 ->where('id_users', $user->id)
                 ->count();
-    
+
             $user->deposit_total = DB::table('deposit_users')
                 ->where('id_users', $user->id)
                 ->sum('amount');
-    
+
             $user->withdrawal_count = DB::table('withdrawal_users')
                 ->where('id_users', $user->id)
                 ->count();
-    
+
             $user->withdrawal_total = DB::table('withdrawal_users')
                 ->where('id_users', $user->id)
                 ->sum('amount');
-    
+
             // Transaksi kombinasi
             $user->has_combination = DB::table('combination_users')
                 ->where('id_users', $user->id)
                 ->exists();
-    
+
             $user->latest_product_id = DB::table('transactions_users')
                 ->where('id_users', $user->id)
                 ->orderByDesc('created_at')
                 ->value('id_products');
-    
+
             // Absen
             $user->absen_user = DB::table('absen_users')
                 ->where('id_users', $user->id)
                 ->select('created_at')
                 ->limit(5)
                 ->get();
-    
+
             // Task
             $positionSet = $user->position_set;
             $membership = $user->membership;
             $taskLimit = $limitMap[$membership] ?? 0;
-    
+
             $taskDone = DB::table('transactions_users')
                 ->where('id_users', $user->id)
                 ->where('set', $positionSet)
                 ->where('status', 0)
                 ->whereDate('created_at', $today)
                 ->count();
-    
+
             $user->task_done = $taskDone;
             $user->task_remaining = $taskLimit - $taskDone;
             $user->task_limit = $taskLimit;
-            
+
             return $user;
         });
-    
+
         dd($users->first());
     }
 
     public function exportUsersExcel()
     {
         $user = Auth::user();
-    
+
         if ($user) {
             DB::table('log_admin')->insert([
                 'keterangan' => '' . $user->name . ' has exported user data to Excel.',
@@ -318,14 +317,14 @@ class UsersAdmin extends Controller
                 'updated_at' => now(),
             ]);
         }
-        
+
         return Excel::download(new UsersExport, 'users-data.xlsx');
     }
-    
+
     public function exportUsersPdf()
     {
         $user = Auth::user();
-    
+
         if ($user) {
             DB::table('log_admin')->insert([
                 'keterangan' => '' . $user->name . ' has exported user data to PDF.',
@@ -333,12 +332,12 @@ class UsersAdmin extends Controller
                 'updated_at' => now(),
             ]);
         }
-        
+
         $users = $this->getExportUserData(); // sesuai yang sudah kita buat sebelumnya
         $pdf = Pdf::loadView('admin.export-pdf', compact('users'))->setPaper('a4', 'landscape');
         return $pdf->download('users-data.pdf');
     }
-    
+
     private function getExportUserData()
     {
         $today = now()->toDateString();
@@ -348,73 +347,73 @@ class UsersAdmin extends Controller
             'Platinum' => 55,
             'Crown' => 55,
         ];
-    
+
         $users = DB::table('users')
             ->select('id', 'uid', 'name', 'phone_email', 'email_only', 'password', 'referral', 'referral_upline', 'profile', 'status', 'level', 'membership', 'credibility', 'network_address', 'network_address_manual', 'currency', 'currency_manual', 'wallet_address', 'ip_address', 'position_set', 'created_at', 'updated_at')
             ->orderBy('created_at', 'desc')
             ->get();
-    
+
         return $users->transform(function ($user) use ($today, $limitMap) {
             // Finance
             $user->finance = DB::table('finance_users')
                 ->where('id_users', $user->id)
                 ->select('saldo', 'saldo_beku', 'saldo_misi', 'komisi', 'withdrawal_password', 'updated_at')
                 ->first();
-    
+
             // Combination
             $user->combination = DB::table('combination_users')
                 ->where('id_users', $user->id)
                 ->select('id_produk', 'sequence', 'set_boost')
                 ->get();
-    
+
             $user->combination_product = DB::table('combination_users')
                 ->where('id_users', $user->id)
                 ->pluck('id_produk')
                 ->toArray();
-    
+
             $user->combination_data = DB::table('combination_users')
                 ->where('id_users', $user->id)
                 ->select('id_produk', 'sequence', 'set_boost')
                 ->first();
-    
+
             $user->has_combination = DB::table('combination_users')
                 ->where('id_users', $user->id)
                 ->exists();
-    
+
             // Upline
             $user->upline_name = DB::table('users')
                 ->where('referral', $user->referral_upline)
                 ->value('name');
-    
+
             // Downlines
             $user->downlines = DB::table('users')
                 ->where('referral_upline', $user->referral)
                 ->select('name')
                 ->get();
-    
+
             // Deposit / Withdraw
             $user->deposit_count = DB::table('deposit_users')
                 ->where('id_users', $user->id)
                 ->count();
-    
+
             $user->deposit_total = DB::table('deposit_users')
                 ->where('id_users', $user->id)
                 ->sum('amount');
-    
+
             $user->withdrawal_count = DB::table('withdrawal_users')
                 ->where('id_users', $user->id)
                 ->count();
-    
+
             $user->withdrawal_total = DB::table('withdrawal_users')
                 ->where('id_users', $user->id)
                 ->sum('amount');
-    
+
             // Latest product ID
             $user->latest_product_id = DB::table('transactions_users')
                 ->where('id_users', $user->id)
                 ->orderByDesc('created_at')
                 ->value('id_products');
-    
+
             // Absen 5 hari terakhir
             $user->absen_user = DB::table('absen_users')
                 ->where('id_users', $user->id)
@@ -422,23 +421,23 @@ class UsersAdmin extends Controller
                 ->orderByDesc('created_at')
                 ->limit(5)
                 ->get();
-    
+
             // Task
             $positionSet = $user->position_set;
             $membership = $user->membership;
             $taskLimit = $limitMap[$membership] ?? 0;
-    
+
             $taskDone = DB::table('transactions_users')
                 ->where('id_users', $user->id)
                 ->where('set', $positionSet)
                 ->where('status', 0)
                 ->whereDate('created_at', $today)
                 ->count();
-    
+
             $user->task_done = $taskDone;
             $user->task_remaining = $taskLimit - $taskDone;
             $user->task_limit = $taskLimit;
-    
+
             return $user;
         });
     }
@@ -500,7 +499,7 @@ class UsersAdmin extends Controller
         // Kirim data ke view
         return view('admin.users-detail', compact('user', 'finance', 'dataUpline', 'referrals'));
     }
-    
+
     public function addUsers(Request $request)
     {
         // Validasi
@@ -621,10 +620,10 @@ class UsersAdmin extends Controller
         if ($user->profile) {
             Storage::disk('public')->delete($user->profile);
         }
-        
+
         // Ambil admin yang sedang login
         $admin = Auth::user();
-    
+
         // Simpan log ke log_admin
         if ($admin) {
             DB::table('log_admin')->insert([
@@ -633,7 +632,7 @@ class UsersAdmin extends Controller
                 'updated_at' => now(),
             ]);
         }
-        
+
 
         // Hapus data dari tabel users dan finance_users
         DB::table('finance_users')->where('id_users', $user_id)->delete();
@@ -659,20 +658,20 @@ class UsersAdmin extends Controller
             'network_address' => 'nullable|string|max:255',
             'currency' => 'nullable|string|max:255',
         ]);
-    
+
         // Cari user
         $user = DB::table('users')->where('id', $id)->first();
-    
+
         if (!$user) {
             return redirect()->back()->with('error', 'User not found.');
         }
-    
+
         // Cek apakah ada file gambar baru
         if ($request->hasFile('profile')) {
             if ($user->profile) {
                 Storage::disk('public')->delete($user->profile);
             }
-    
+
             $file = $request->file('profile');
             $filePath = 'profiles/' . time() . '_' . Str::random(5) . '.' . $file->getClientOriginalExtension();
             Storage::disk('public')->put($filePath, file_get_contents($file));
@@ -680,7 +679,7 @@ class UsersAdmin extends Controller
         } else {
             $profile = $user->profile;
         }
-    
+
         // Update ke tabel users (simpan juga kolom manual bila ada)
         DB::table('users')->where('id', $id)->update([
             'profile' => $profile,
@@ -698,13 +697,13 @@ class UsersAdmin extends Controller
             'currency_manual' => $request->has('currency_manual') ? ($request->currency_manual ?? null) : ($user->currency_manual ?? null),
             'updated_at' => now(),
         ]);
-    
+
         // Ambil admin yang sedang login
         $admin = Auth::user();
-        
+
         // Deteksi perubahan
         $changedFields = [];
-        
+
         if ($request->name !== $user->name) $changedFields[] = 'Name';
         if ($request->password) $changedFields[] = 'Password';
         if ($request->referral_upline !== $user->referral_upline) $changedFields[] = 'Superior Username';
@@ -719,7 +718,7 @@ class UsersAdmin extends Controller
         if ($request->withdrawal_password !== DB::table('finance_users')->where('id_users', $id)->value('withdrawal_password')) {
             $changedFields[] = 'Withdrawal Password';
         }
-        
+
         // Simpan log jika admin login
         if ($admin) {
             DB::table('log_admin')->insert([
@@ -728,13 +727,13 @@ class UsersAdmin extends Controller
                 'updated_at' => now(),
             ]);
         }
-        
+
         // Update withdrawal_password di finance_users
         DB::table('finance_users')->where('id_users', $id)->update([
             'withdrawal_password' => $request->withdrawal_password,
             'updated_at' => now(),
         ]);
-    
+
         return redirect()->back()->with('success', 'User updated successfully!');
     }
 
@@ -745,30 +744,30 @@ class UsersAdmin extends Controller
             'saldo' => 'nullable|numeric',
             'saldo_bonus' => 'nullable|numeric',
         ]);
-    
+
         // Ambil data finance lama
         $financeUser = DB::table('finance_users')->where('id_users', $id)->first();
         if (!$financeUser) {
             return redirect()->back()->with('error', 'Finance user data not found.');
         }
-    
+
         // Ambil data user untuk validasi lanjutan (opsional)
         $user = DB::table('users')->where('id', $id)->first();
         if (!$user) {
             return redirect()->back()->with('error', 'User data not found.');
         }
-        
+
         if ($request->saldo < 0 && $financeUser->saldo != $request->saldo) {
             // Cek apakah user sudah mengisi data withdrawal
             if (!$user->network_address || !$user->currency || !$user->wallet_address) {
                 return redirect()->back()->with('error', 'User has not bound a withdrawal account.');
             }
-            
+
             // Cek apakah saldo berubah
             $saldoLama = (float) $financeUser->saldo;
             $saldoBaru = (float) $request->saldo;
             $selisihSaldo = $saldoBaru + $saldoLama;
-        
+
             // Update finance_users
             DB::table('finance_users')->where('id_users', $id)->update([
                 'saldo' => $selisihSaldo,
@@ -776,7 +775,7 @@ class UsersAdmin extends Controller
                 'komisi' => $financeUser->komisi,
                 'updated_at' => now(),
             ]);
-        
+
             // Simpan ke withdrawal_users
             DB::table('withdrawal_users')->insert([
                 'id_users' => $id,
@@ -788,16 +787,16 @@ class UsersAdmin extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-            
+
             // Ambil admin yang sedang login
             $admin = Auth::user();
-        
+
             // Siapkan log perubahan
             $updatedFields = [];
             if ($request->saldo != $financeUser->saldo) {
                 $updatedFields[] = 'Withdrawal';
             }
-            
+
             // Simpan log ke log_admin
             if ($admin && count($updatedFields) > 0) {
                 $fieldList = implode(', ', $updatedFields);
@@ -807,9 +806,9 @@ class UsersAdmin extends Controller
                     'updated_at' => now(),
                 ]);
             }
-            
+
         }
-        
+
         if ($request->saldo > 0 && $financeUser->saldo != $request->saldo) {
             // Cek apakah saldo berubah
             $saldoLama = (float) $financeUser->saldo;
@@ -818,7 +817,7 @@ class UsersAdmin extends Controller
             // if ($saldoLama >= 0) {
             //     $selisihSaldo = $saldoLama + $saldoBaru;
             // }
-            
+
             DB::table('deposit_users')->insert([
                 'id_users' => $id,
                 'currency' => '-',
@@ -830,12 +829,12 @@ class UsersAdmin extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-            
+
             // Cek apakah ada price_akhir
             if ($financeUser->price_akhir > 0) {
                 $newSaldo = $financeUser->saldo;
                 $newBeku = $financeUser->saldo_beku;
-                
+
                 if ($financeUser->saldo < 0) {
                     $newSaldo = $financeUser->saldo + $request->saldo;
 
@@ -850,26 +849,26 @@ class UsersAdmin extends Controller
                     $newSaldo = $financeUser->saldo - $request->saldo;
                     $newBeku = $financeUser->saldo_beku;
                 }
-            
+
                 // Hitung price_akhir baru
                 $newPriceAkhir = $financeUser->price_akhir - $request->saldo;
                 if ($newPriceAkhir < 0) {
                     $newPriceAkhir = 0; // Tidak boleh minus
                 }
-            
+
                 $updateData = [
                     'saldo' => $newSaldo,
                     'saldo_beku' => $financeUser->saldo_beku + $request->saldo,
                     'price_akhir' => $newBeku,
                     'updated_at' => now(),
                 ];
-            
+
                 // Kalau saldo sudah positif atau nol
                 if ($newSaldo >= 0) {
                     $updateData['price_akhir'] = 0;
                     $updateData['temp_balance'] = 0;
                 }
-            
+
                 DB::table('finance_users')->where('id_users', $id)->update($updateData);
             } else {
                 // Update finance_users jika tidak ada price_akhir
@@ -879,16 +878,16 @@ class UsersAdmin extends Controller
                     'updated_at' => now(),
                 ]);
             }
-            
+
             // Ambil admin yang sedang login
             $admin = Auth::user();
-            
+
             // Siapkan log perubahan
             $updatedFieldsW = [];
             if ($request->saldo != $financeUser->saldo) {
                 $updatedFieldsW[] = 'Deposit';
             }
-            
+
             // Simpan log ke log_admin
             if ($admin && count($updatedFieldsW) > 0) {
                 $fieldListW = implode(', ', $updatedFieldsW);
@@ -899,9 +898,9 @@ class UsersAdmin extends Controller
                 ]);
             }
         }
-        
+
         if ($request->saldo_bonus > 0 ) {
-            
+
             DB::table('deposit_users')->insert([
                 'id_users' => $id,
                 'currency' => '-',
@@ -913,15 +912,15 @@ class UsersAdmin extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-            
+
             // Cek apakah ada price_akhir
             if ($financeUser->price_akhir > 0) {
                 $newSaldo = $financeUser->saldo;
                 $newBeku = $financeUser->saldo_beku;
-                
+
                 if ($financeUser->saldo < 0) {
                     $newSaldo = $financeUser->saldo + $request->saldo_bonus;
-                    
+
                     if ($newSaldo >= 0) {
                         // Jika saldo sudah positif setelah ditambah
                         $newBeku += $newSaldo; // Tambahkan sisa saldo positif ke saldo_beku
@@ -929,31 +928,31 @@ class UsersAdmin extends Controller
                     } else {
                        $newBeku = $financeUser->saldo_beku + $request->saldo_bonus;
                     }
-                    
+
                 } else {
                     $newSaldo = $financeUser->saldo - $request->saldo_bonus;
                     $newBeku = $financeUser->saldo_beku;
                 }
-            
+
                 // Hitung price_akhir baru
                 $newPriceAkhir = $financeUser->price_akhir - $request->saldo_bonus;
                 if ($newPriceAkhir < 0) {
                     $newPriceAkhir = 0; // Tidak boleh minus
                 }
-            
+
                 $updateData = [
                     'saldo' => $newSaldo,
                     'saldo_beku' => $financeUser->saldo_beku + $request->saldo_bonus,
                     'price_akhir' => $newPriceAkhir,
                     'updated_at' => now(),
                 ];
-            
+
                 // Kalau saldo sudah positif atau nol
                 if ($newSaldo >= 0) {
                     $updateData['price_akhir'] = 0;
                     $updateData['temp_balance'] = 0;
-                }       
-            
+                }
+
                 DB::table('finance_users')->where('id_users', $id)->update($updateData);
             } else {
                 // Update finance_users jika tidak ada price_akhir
@@ -962,16 +961,16 @@ class UsersAdmin extends Controller
                     'updated_at' => now(),
                 ]);
             }
-            
+
             // Ambil admin yang sedang login
             $admin = Auth::user();
-            
+
             // Siapkan log perubahan
             $updatedFieldsW = [];
             if ($request->saldo != $financeUser->saldo) {
                 $updatedFieldsW[] = 'Bonus';
             }
-            
+
             // Simpan log ke log_admin
             if ($admin && count($updatedFieldsW) > 0) {
                 $fieldListW = implode(', ', $updatedFieldsW);
@@ -982,7 +981,7 @@ class UsersAdmin extends Controller
                 ]);
             }
         }
-        
+
         return redirect()->back()->with('success', 'Finance user data updated successfully!');
     }
 
@@ -1030,16 +1029,16 @@ class UsersAdmin extends Controller
 
         return redirect()->back()->with('success', 'Wallet user data updated successfully!');
     }
-    
+
     public function editBoostUser(Request $request, $id)
     {
         if ($request->status === 'inactive') {
             // Hapus semua data kombinasi user ini
             DB::table('combination_users')->where('id_users', $id)->delete();
-    
+
             return redirect()->back()->with('success', 'User combination deactivated successfully!');
         }
-    
+
         // Validasi jika status active
         // We accept array of combinations; each combination is an array with products (max 3) and sequence
         $request->validate([
@@ -1107,7 +1106,6 @@ class UsersAdmin extends Controller
         $activeCombinationTx = DB::table('transactions_users')
             ->where('id_users', $id)
             ->where('type', 'combination')
-            ->whereDate('created_at', now()->toDateString())
             ->where('status', 1)
             ->first();
         return view('admin.users-combination', compact('user', 'products', 'combinations', 'usedProductIds', 'productMap', 'activeCombinationTx'));
@@ -1372,19 +1370,19 @@ class UsersAdmin extends Controller
         return redirect()->route('admin.users.combinations', ['id' => $id, 'set' => $request->set_boost])->with('success', 'Combination deleted.');
     }
 
-    
+
     public function resetJob(Request $request)
     {
         $request->validate([
             'id' => 'required|integer',
         ]);
-    
+
         $user = DB::table('users')->where('id', $request->id)->first();
-    
+
         if (!$user) {
             return redirect()->back()->with('error', 'User not found.');
         }
-    
+
         if ($user->position_set == 1) {
             DB::table('users')->where('id', $user->id)->update([
                 'position_set' => 2,
@@ -1398,7 +1396,7 @@ class UsersAdmin extends Controller
         } elseif ($user->position_set == 3) {
             return redirect()->back()->with('error', 'Max Set For Today.');
         }
-    
+
         return redirect()->back()->with('success', 'Job reset successfully.');
     }
 
