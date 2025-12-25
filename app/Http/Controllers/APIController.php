@@ -1518,7 +1518,7 @@ public function getMembership(Request $request)
             // =========================
             $usedProductIds = DB::table('transactions_users')
                 ->where('id_users', $userId)
-\                ->pluck('id_products')
+                ->pluck('id_products')
                 ->toArray();
 
             // Pilih produk acak yang belum terpakai hari ini
