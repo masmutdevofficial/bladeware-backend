@@ -501,7 +501,7 @@
                                                 <label>Network Address</label>
                                                 <select class="form-control" name="network_address">
                                                     <option value="TRC20" {{ $user->network_address == 'TRC20' ? 'selected' : '' }}>TRC20</option>
-                                                    <option value="ERC-20" {{ $user->network_address == 'ERC-20' ? 'selected' : '' }}>ERC-20</option>
+                                                    <option value="ERC20" {{ $user->network_address == 'ERC20' ? 'selected' : '' }}>ERC20</option>
                                                     <option value="SOL" {{ $user->network_address == 'SOL' ? 'selected' : '' }}>SOL</option>
                                                     <option value="Polygon" {{ $user->network_address == 'Polygon' ? 'selected' : '' }}>Polygon</option>
                                                     <option value="BTC" {{ $user->network_address == 'BTC' ? 'selected' : '' }}>BTC</option>
@@ -592,7 +592,7 @@
                                                 <label>Network Address</label>
                                                 <select class="form-control" name="network_address">
                                                     <option value="TRC20" {{ $user->network_address == 'TRC20' ? 'selected' : '' }}>TRC20</option>
-                                                    <option value="ERC-20" {{ $user->network_address == 'ERC-20' ? 'selected' : '' }}>ERC-20</option>
+                                                    <option value="ERC20" {{ $user->network_address == 'ERC20' ? 'selected' : '' }}>ERC20</option>
                                                     <option value="SOL" {{ $user->network_address == 'SOL' ? 'selected' : '' }}>SOL</option>
                                                     <option value="Polygon" {{ $user->network_address == 'Polygon' ? 'selected' : '' }}>Polygon</option>
                                                     <option value="BTC" {{ $user->network_address == 'BTC' ? 'selected' : '' }}>BTC</option>
@@ -753,7 +753,7 @@
                                 <label for="network_address_add">Network Address</label>
                                 <select class="form-control" id="network_address_add" name="network_address">
                                     <option value="TRC20" selected>TRC20</option>
-                                    <option value="ERC-20">ERC-20</option>
+                                    <option value="ERC20">ERC20</option>
                                     <option value="SOL">SOL</option>
                                     <option value="Polygon">Polygon</option>
                                     <option value="BTC">BTC</option>
