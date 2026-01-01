@@ -83,6 +83,7 @@ class UsersAdmin extends Controller
                 ->where('id_users', $user->id)
                 ->where('type', 'combination')
                 ->where('status', 1)
+                ->whereDate('created_at', $today)
                 ->value('set');
             $user->is_combination_active = $activeSet ? true : false;
 
