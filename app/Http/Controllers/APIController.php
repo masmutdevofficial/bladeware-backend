@@ -435,7 +435,7 @@ class APIController extends Controller
 
             $infoUser = DB::table('finance_users')
                 ->where('id_users', $user->id)
-                ->select('saldo','saldo_misi','withdrawal_password')
+                ->select('saldo','saldo_misi','komisi','withdrawal_password')
                 ->first();
 
             return response()->json([

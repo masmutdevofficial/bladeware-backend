@@ -338,7 +338,7 @@
                                     </a>
                                 </div>
 
-                                <div class="d-flex justify-content-center w-full mt-4">
+                                <div class="d-flex justify-content-center w-full mt-4 mb-4">
                                     @if ($user->task_done == $user->task_limit)
                                         <form action="{{ url('/admin/reset-job') }}" method="POST" class="d-inline">
                                             @csrf
@@ -355,7 +355,7 @@
                                     @endif
                                 </div>
 
-                                <div class="d-flex justify-content-center w-full mt-2">
+                                <div class="d-flex justify-content-center w-full mt-4">
                                     <form action="{{ url('/admin/reset-harian') }}" method="POST" class="d-inline">
                                         @csrf
                                         <input type="hidden" name="id" value="{{ $user->id }}">
@@ -510,6 +510,9 @@
                                             <div class="form-group">
                                                 <label>Network Address</label>
                                                 <select class="form-control" name="network_address">
+                                                    @if (!empty($user->network_address) && !in_array($user->network_address, ['TRC20', 'ERC20', 'SOL', 'Polygon', 'BTC']))
+                                                        <option value="{{ $user->network_address }}" selected>{{ $user->network_address }}</option>
+                                                    @endif
                                                     <option value="TRC20" {{ $user->network_address == 'TRC20' ? 'selected' : '' }}>TRC20</option>
                                                     <option value="ERC20" {{ $user->network_address == 'ERC20' ? 'selected' : '' }}>ERC20</option>
                                                     <option value="SOL" {{ $user->network_address == 'SOL' ? 'selected' : '' }}>SOL</option>
@@ -524,6 +527,9 @@
                                             <div class="form-group">
                                                 <label>Currency</label>
                                                 <select class="form-control" name="currency">
+                                                    @if (!empty($user->currency) && !in_array($user->currency, ['USDT', 'TRX', 'Paypal USD', 'USDC', 'ETH', 'BTC']))
+                                                        <option value="{{ $user->currency }}" selected>{{ $user->currency }}</option>
+                                                    @endif
                                                     <option value="USDT" {{ $user->currency == 'USDT' ? 'selected' : '' }}>USDT</option>
                                                     <option value="TRX" {{ $user->currency == 'TRX' ? 'selected' : '' }}>TRX</option>
                                                     <option value="Paypal USD" {{ $user->currency == 'Paypal USD' ? 'selected' : '' }}>Paypal USD</option>
