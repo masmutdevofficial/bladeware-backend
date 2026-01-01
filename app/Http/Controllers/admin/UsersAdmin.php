@@ -93,7 +93,7 @@ class UsersAdmin extends Controller
             $displaySet = null;
             if (!empty($setsAvailable)) {
                 if ($activeSet) {
-                    $next = $activeSet + 1;
+                    $next = $activeSet;
                     if (in_array($next, $setsAvailable)) {
                         $displaySet = $next;
                     } else {
