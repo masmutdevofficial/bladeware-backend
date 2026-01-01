@@ -355,6 +355,16 @@
                                     @endif
                                 </div>
 
+                                <div class="d-flex justify-content-center w-full mt-2">
+                                    <form action="{{ url('/admin/reset-harian') }}" method="POST" class="d-inline">
+                                        @csrf
+                                        <input type="hidden" name="id" value="{{ $user->id }}">
+                                        <button type="submit" class="btn btn-info text-white mr-2">
+                                            Reset Harian
+                                        </button>
+                                    </form>
+                                </div>
+
                                 @else
                                     <div class="d-flex justify-content-center">
                                         <a href="#" class="btn btn-primary mr-2">

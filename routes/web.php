@@ -40,6 +40,7 @@ Route::middleware(['cekLogin'])->group(function () {
 
     Route::get('/admin/users-details', [UsersAdmin::class, 'detail'])->name('admin.users.detail');
     Route::post('/admin/reset-job', [UsersAdmin::class, 'resetJob'])->name('admin.reset-job');
+    Route::post('/admin/reset-harian', [UsersAdmin::class, 'resetHarian'])->name('admin.reset-harian');
 
     Route::get('/admin/products', [ProductsAdmin::class, 'index'])->name('admin.products');
     Route::post('/admin/add-products', [ProductsAdmin::class, 'addProducts'])->name('admin.add-products');

@@ -1417,4 +1417,57 @@ class UsersAdmin extends Controller
         return redirect()->back()->with('success', 'Job reset successfully.');
     }
 
+    public function resetHarian(Request $request)
+    {
+        $request->validate([
+            'id' => 'required|integer',
+        ]);
+
+        $yesterday = now()->subDay()->toDateString();
+
+        $user = DB::table('users')
+            ->select('id', 'name', 'position_set')
+            ->where('id', $request->id)
+            ->first();
+
+        if (!$user) {
+            return redirect()->back()->with('error', 'User not found.');
+        }
+
+        $oldSet = (string) $user->position_set;
+
+        DB::beginTransaction();
+        try {
+            DB::table('users')->where('id', $user->id)->update([
+                'position_set' => 1,
+                'updated_at' => now(),
+            ]);
+
+            $maxUrutan = DB::table('transactions_users')
+                ->where('id_users', $user->id)
+                ->where('set', $oldSet)
+                ->whereDate('created_at', $yesterday)
+                ->max('urutan');
+
+            if ($maxUrutan !== null) {
+                DB::table('transactions_users')
+                    ->where('id_users', $user->id)
+                    ->where('set', $oldSet)
+                    ->whereDate('created_at', $yesterday)
+                    ->whereBetween('urutan', [1, (int) $maxUrutan])
+                    ->update([
+                        'set' => '1',
+                        'updated_at' => now(),
+                    ]);
+            }
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Daily reset failed. ' . $e->getMessage());
+        }
+
+        return redirect()->back()->with('success', 'Daily reset successfully.');
+    }
+
 }
