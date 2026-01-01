@@ -273,7 +273,7 @@
                                             <strong class="me-1 text-danger">Order Boost:</strong>{{ $user->task_done }}/{{ $user->task_limit }}
                                         </div>
                                         <div class="d-flex justify-content-between align-items-center flex-row mb-0 text-danger" >
-                                            <strong class="me-1" >Current Set:</strong> {{ $user->display_set ?? '-' }}
+                                            <strong class="me-1" >Current Set:</strong> {{ $user->position_set ?? '-' }}
                                         </div>
                                         @php
                                             $ids = $user->display_combination_products ?? [];
@@ -286,7 +286,7 @@
                                             <strong class="me-1 text-danger">Order:</strong> {{ $user->display_sequence - 1 ?? '-' }}
                                         </div>
                                         <div class="d-flex justify-content-between align-items-center flex-row mb-1 text-danger">
-                                            <strong class="me-1 text-danger">Set:</strong> {{ $user->display_set ?? '-' }}
+                                            <strong class="me-1 text-danger">Set:</strong> {{ $user->position_set ?? '-' }}
                                         </div>
                                         @if($user->is_combination_active)
                                             <div class="d-flex flex-column justify-content-center align-items-center flex-row mb-1" style="color: red;">
