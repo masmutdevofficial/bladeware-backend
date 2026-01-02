@@ -339,18 +339,24 @@
                                 </div>
 
                                 <div class="d-flex justify-content-center w-full mt-4 mb-4">
-                                    @if ($user->task_done == $user->task_limit)
+                                    @php
+                                        $currentSet = (int) ($user->position_set ?? 0);
+                                        $targetSet = min($currentSet + 1, 3);
+                                        $canNextSet = ($user->task_done == $user->task_limit) && ($currentSet < 3);
+                                    @endphp
+
+                                    @if ($canNextSet)
                                         <form action="{{ url('/admin/reset-job') }}" method="POST" class="d-inline">
                                             @csrf
                                             <input type="hidden" name="id" value="{{ $user->id }}">
                                             <button type="submit" class="btn btn-success text-white mr-2">
-                                                Reset ({{ $user->task_done }}/{{ $user->task_limit }})
+                                                Next Set {{ $targetSet }}
                                             </button>
                                         </form>
                                     @else
                                         <div href="#"
                                            class="btn btn-danger mr-2" >
-                                            Reset ({{ $user->task_done }}/{{ $user->task_limit }})
+                                            Next Set {{ $targetSet }}
                                         </div>
                                     @endif
                                 </div>
