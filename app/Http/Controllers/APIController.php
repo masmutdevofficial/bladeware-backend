@@ -1134,7 +1134,7 @@ public function getMembership(Request $request)
     }
 }
 
-        public function getProduk(Request $request)
+    public function getProduk(Request $request)
     {
         // =========================
         // Tahap 1: Ambil & validasi token JWT dari header
@@ -1169,14 +1169,13 @@ public function getMembership(Request $request)
             // =========================
             // Tahap 3: Validasi status website (settings)
             // =========================
-            $setting = DB::table('settings')->first();
-
-            // Jika website ditandai "closed" (libur), hentikan
-            if ($setting && $setting->closed == 1) {
+            // If website is closed, block boosting
+            $closed = (int) (DB::table('settings')->value('closed') ?? 0);
+            if ($closed === 1) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Boosting is Unavailable. Please Return During Operational Hours',
-                ], 400);
+                    'message' => 'Boosting is currently unavailable. Please return during operational hours.',
+                ], 403);
             }
 
             // Opsi: Validasi jam kerja (dinonaktifkan di kode Anda)
@@ -1616,6 +1615,15 @@ public function getMembership(Request $request)
             $decoded = JWT::decode(str_replace('Bearer ', '', $token), new Key($secretKey, 'HS256'));
             $userId = $decoded->sub;
 
+            // If website is closed, block boosting
+            $closed = (int) (DB::table('settings')->value('closed') ?? 0);
+            if ($closed === 1) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Boosting is currently unavailable. Please return during operational hours.',
+                ], 403);
+            }
+
             $price = $request->price;
             $profit = $request->profit;
 
@@ -1818,6 +1826,15 @@ public function getMembership(Request $request)
             $secretKey = config('jwt.secret');
             $decoded = JWT::decode(str_replace('Bearer ', '', $token), new Key($secretKey, 'HS256'));
             $userId = $decoded->sub;
+
+            // If website is closed, block boosting
+            $closed = (int) (DB::table('settings')->value('closed') ?? 0);
+            if ($closed === 1) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Boosting is currently unavailable. Please return during operational hours.',
+                ], 403);
+            }
 
             $user = DB::table('users')->where('id', $userId)->first();
             if (!$user) {
