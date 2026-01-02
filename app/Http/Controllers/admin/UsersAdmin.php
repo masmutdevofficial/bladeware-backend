@@ -47,9 +47,6 @@ class UsersAdmin extends Controller
         $users = $query->paginate($perPage)->withQueryString();
 
         $users->getCollection()->transform(function ($user) {
-            $today = now()->toDateString();
-            $yesterday = now()->subDay()->toDateString();
-
             // Gunakan nilai manual untuk tampilan jika tersedia
             if (!empty($user->network_address_manual)) {
                 $user->network_address = $user->network_address_manual;
@@ -84,7 +81,7 @@ class UsersAdmin extends Controller
                 ->where('id_users', $user->id)
                 ->where('type', 'combination')
                 ->where('status', 1)
-                ->whereDate('created_at', $today)
+                ->where('is_reset', 'Belum')
                 ->value('set');
             $user->is_combination_active = $activeSet ? true : false;
 
@@ -178,7 +175,7 @@ class UsersAdmin extends Controller
                 ->where('id_users', $user->id)
                 ->where('set', $positionSet)
                 ->where('status', 0)
-                ->whereDate('created_at', $today)
+                ->where('is_reset', 'Belum')
                 ->distinct('urutan')
                 ->count('urutan');
 
@@ -187,17 +184,9 @@ class UsersAdmin extends Controller
             $user->task_remaining = $tugasSekarang;
             $user->task_limit = $sisaTugas;
 
-            $tugasSelesaiKemarin = DB::table('transactions_users')
-                ->where('id_users', $user->id)
-                ->where('set', $positionSet)
-                ->where('status', 0)
-                ->whereDate('created_at', $yesterday)
-                ->distinct('urutan')
-                ->count('urutan');
-
-            $tugasKemarinSisa = $sisaTugas - $tugasSelesaiKemarin;
-            $user->task_done_yesterday = $tugasSelesaiKemarin;
-            $user->task_remaining_yesterday = $tugasKemarinSisa;
+            // Backward-compat for existing views: "yesterday" now means current (is_reset=Belum)
+            $user->task_done_yesterday = $tugasSelesai;
+            $user->task_remaining_yesterday = $tugasSekarang;
             return $user;
         });
 
@@ -216,8 +205,6 @@ class UsersAdmin extends Controller
 
     public function exportPDF()
     {
-        $today = now()->toDateString();
-
         $users = DB::table('users')
             ->select('id', 'uid', 'name', 'phone_email', 'email_only', 'password', 'referral', 'referral_upline', 'profile', 'status', 'level', 'membership', 'credibility', 'network_address', 'network_address_manual', 'currency', 'currency_manual', 'wallet_address', 'ip_address', 'position_set', 'created_at', 'updated_at')
             ->orderBy('created_at', 'desc')
@@ -230,7 +217,7 @@ class UsersAdmin extends Controller
             'Crown' => 55,
         ];
 
-        $users->transform(function ($user) use ($today, $limitMap) {
+        $users->transform(function ($user) use ($limitMap) {
             // Finance
             $user->finance = DB::table('finance_users')
                 ->where('id_users', $user->id)
@@ -307,7 +294,7 @@ class UsersAdmin extends Controller
                 ->where('id_users', $user->id)
                 ->where('set', $positionSet)
                 ->where('status', 0)
-                ->whereDate('created_at', $today)
+                ->where('is_reset', 'Belum')
                 ->count();
 
             $user->task_done = $taskDone;
@@ -354,7 +341,6 @@ class UsersAdmin extends Controller
 
     private function getExportUserData()
     {
-        $today = now()->toDateString();
         $limitMap = [
             'Normal' => 40,
             'Gold' => 50,
@@ -367,7 +353,7 @@ class UsersAdmin extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        return $users->transform(function ($user) use ($today, $limitMap) {
+        return $users->transform(function ($user) use ($limitMap) {
             // Finance
             $user->finance = DB::table('finance_users')
                 ->where('id_users', $user->id)
@@ -445,7 +431,7 @@ class UsersAdmin extends Controller
                 ->where('id_users', $user->id)
                 ->where('set', $positionSet)
                 ->where('status', 0)
-                ->whereDate('created_at', $today)
+                ->where('is_reset', 'Belum')
                 ->count();
 
             $user->task_done = $taskDone;
@@ -1465,7 +1451,6 @@ class UsersAdmin extends Controller
         ]);
 
         $admin = Auth::user();
-        $yesterday = now()->subDay()->toDateString();
 
         $user = DB::table('users')
             ->select('id', 'name', 'position_set', 'membership')
@@ -1493,18 +1478,18 @@ class UsersAdmin extends Controller
         ];
 
         $taskLimit = (int) ($limitMap[$user->membership] ?? 0);
-        $taskDoneYesterday = (int) DB::table('transactions_users')
+        $taskDone = (int) DB::table('transactions_users')
             ->where('id_users', $user->id)
             ->where('set', $oldSet)
             ->where('status', 0)
-            ->whereDate('created_at', $yesterday)
+            ->where('is_reset', 'Belum')
             ->distinct('urutan')
             ->count('urutan');
 
-        if ($taskLimit > 0 && $taskDoneYesterday < $taskLimit) {
+        if ($taskLimit > 0 && $taskDone < $taskLimit) {
             if ($admin) {
                 DB::table('log_admin')->insert([
-                    'keterangan' => $admin->name . ' attempted daily reset for user "' . $user->name . '" (id=' . $user->id . ') but daily tasks are not completed yet (' . $taskDoneYesterday . '/' . $taskLimit . ') for date ' . $yesterday . '.',
+                    'keterangan' => $admin->name . ' attempted daily reset for user "' . $user->name . '" (id=' . $user->id . ') but tasks are not completed yet (' . $taskDone . '/' . $taskLimit . ').',
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
@@ -1522,23 +1507,15 @@ class UsersAdmin extends Controller
                 'updated_at' => now(),
             ]);
 
-            $maxUrutan = DB::table('transactions_users')
+            // Mark current cycle transactions as reset so they won't be counted again
+            $updatedTxCount = (int) DB::table('transactions_users')
                 ->where('id_users', $user->id)
                 ->where('set', $oldSet)
-                ->whereDate('created_at', $yesterday)
-                ->max('urutan');
-
-            if ($maxUrutan !== null) {
-                $updatedTxCount = (int) DB::table('transactions_users')
-                    ->where('id_users', $user->id)
-                    ->where('set', $oldSet)
-                    ->whereDate('created_at', $yesterday)
-                    ->whereBetween('urutan', [1, (int) $maxUrutan])
-                    ->update([
-                        'set' => '1',
-                        'updated_at' => now(),
-                    ]);
-            }
+                ->where('is_reset', 'Belum')
+                ->update([
+                    'is_reset' => 'Sudah',
+                    'updated_at' => now(),
+                ]);
 
             DB::commit();
         } catch (\Throwable $e) {
@@ -1555,7 +1532,7 @@ class UsersAdmin extends Controller
                 ]);
             } else {
                 DB::table('log_admin')->insert([
-                    'keterangan' => $admin->name . ' ran daily reset for user "' . $user->name . '" (id=' . $user->id . ') to set=1; updated ' . $updatedTxCount . ' transactions for date ' . $yesterday . ' (from set ' . $oldSet . ').',
+                    'keterangan' => $admin->name . ' ran daily reset for user "' . $user->name . '" (id=' . $user->id . ') to set=1; marked ' . $updatedTxCount . ' transactions as is_reset=Sudah (from set ' . $oldSet . ').',
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);

@@ -1261,6 +1261,7 @@ public function getMembership(Request $request)
                 ->where('id_users', $userId)
                 ->where('set', $positionSet)
                 ->where('status', 0)
+                ->where('is_reset', 'Belum')
                 ->select('urutan', 'type')
                 ->distinct()
                 ->get();
@@ -1843,6 +1844,7 @@ public function getMembership(Request $request)
                 ->where('id_users', $userId)
                 ->where('set', $positionSet)
                 ->where('status', 0)
+                ->where('is_reset', 'Belum')
                 ->orderBy('urutan')       // jaga urutan grup
                 ->orderBy('id')           // penentu terakhir agar stabil
                 ->pluck('type');
@@ -1888,6 +1890,7 @@ public function getMembership(Request $request)
             $profitToday = DB::table('transactions_users')
                 ->where('id_users', $userId)
                 ->where('status', 0)
+                ->where('is_reset', 'Belum')
                 ->sum('profit');
 
             return response()->json([

@@ -24,7 +24,7 @@ class UsersExport implements FromView, WithStyles, WithEvents, WithColumnWidths
     {
         $lastRow = count($this->users) + 1;
         $range = "A1:G{$lastRow}";
-    
+
         $sheet->getStyle($range)->getAlignment()->setWrapText(true);
         $sheet->getStyle($range)->getAlignment()->setVertical(Alignment::VERTICAL_TOP);
         $sheet->getStyle($range)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
@@ -36,7 +36,7 @@ class UsersExport implements FromView, WithStyles, WithEvents, WithColumnWidths
             AfterSheet::class => function (AfterSheet $event) {
                 $lastRow = count($this->users) + 1; // +1 untuk header
                 $range = "A1:G{$lastRow}";
-    
+
                 // Border untuk semua data + header
                 $styleArray = [
                     'borders' => [
@@ -47,7 +47,7 @@ class UsersExport implements FromView, WithStyles, WithEvents, WithColumnWidths
                     ],
                 ];
                 $event->sheet->getDelegate()->getStyle($range)->applyFromArray($styleArray);
-    
+
                 // Header style (baris 1 saja)
                 $event->sheet->getDelegate()->getStyle("A1:G1")->applyFromArray([
                     'font' => ['bold' => true],
@@ -86,76 +86,74 @@ class UsersExport implements FromView, WithStyles, WithEvents, WithColumnWidths
             ->select('id', 'uid', 'name', 'phone_email', 'email_only', 'password', 'referral', 'referral_upline', 'profile', 'status', 'level', 'membership', 'credibility', 'network_address', 'currency', 'wallet_address', 'ip_address', 'position_set', 'created_at', 'updated_at')
             ->orderBy('created_at', 'desc')
             ->get();
-    
-        $today = now()->toDateString();
-    
-        $users->transform(function ($user) use ($today) {
+
+        $users->transform(function ($user) {
             // Finance
             $user->finance = DB::table('finance_users')
                 ->where('id_users', $user->id)
                 ->select('saldo', 'saldo_beku', 'saldo_misi', 'komisi', 'withdrawal_password', 'updated_at')
                 ->first();
-    
+
             // Combination
             $user->combination = DB::table('combination_users')
                 ->where('id_users', $user->id)
                 ->select('id_produk', 'sequence', 'set_boost')
                 ->get();
-    
+
             $user->combination_product = DB::table('combination_users')
                 ->where('id_users', $user->id)
                 ->pluck('id_produk')
                 ->toArray();
-    
+
             $user->combination_data = DB::table('combination_users')
                 ->where('id_users', $user->id)
                 ->select('id_produk', 'sequence', 'set_boost')
                 ->first();
-    
+
             // Upline
             $user->upline_name = DB::table('users')
                 ->where('referral', $user->referral_upline)
                 ->value('name');
-    
+
             // Downlines
             $user->downlines = DB::table('users')
                 ->where('referral_upline', $user->referral)
                 ->select('name')
                 ->get();
-    
+
             // Deposit & Withdraw
             $user->deposit_count = DB::table('deposit_users')
                 ->where('id_users', $user->id)
                 ->count();
-    
+
             $user->deposit_total = DB::table('deposit_users')
                 ->where('id_users', $user->id)
                 ->sum('amount');
-    
+
             $user->withdrawal_count = DB::table('withdrawal_users')
                 ->where('id_users', $user->id)
                 ->count();
-    
+
             $user->withdrawal_total = DB::table('withdrawal_users')
                 ->where('id_users', $user->id)
                 ->sum('amount');
-    
+
             // Product ID terakhir
             $user->latest_product_id = DB::table('transactions_users')
                 ->where('id_users', $user->id)
                 ->orderByDesc('created_at')
                 ->value('id_products');
-    
+
             // Status combination
             $user->has_combination = DB::table('combination_users')
                 ->where('id_users', $user->id)
                 ->exists();
-    
+
             // Absensi
             $user->absen_user = DB::table('absen_users')
                 ->where('id_users', $user->id)
                 ->get();
-    
+
             // Task Progress
             $limitMap = [
                 'Normal' => 40,
@@ -163,25 +161,25 @@ class UsersExport implements FromView, WithStyles, WithEvents, WithColumnWidths
                 'Platinum' => 55,
                 'Crown' => 55,
             ];
-    
+
             $membership = $user->membership;
             $positionSet = $user->position_set;
             $taskLimit = $limitMap[$membership] ?? 0;
-    
+
             $taskDone = DB::table('transactions_users')
                 ->where('id_users', $user->id)
                 ->where('set', $positionSet)
                 ->where('status', 0)
-                ->whereDate('created_at', $today)
+                ->where('is_reset', 'Belum')
                 ->count();
-    
+
             $user->task_done = $taskDone;
             $user->task_remaining = $taskLimit - $taskDone;
             $user->task_limit = $taskLimit;
-    
+
             return $user;
         });
-    
+
         return $users;
     }
 
