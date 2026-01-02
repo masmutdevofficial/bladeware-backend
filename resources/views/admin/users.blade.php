@@ -356,13 +356,19 @@
                                 </div>
 
                                 <div class="d-flex justify-content-center w-full mt-4">
-                                    <form action="{{ url('/admin/reset-harian') }}" method="POST" class="d-inline">
-                                        @csrf
-                                        <input type="hidden" name="id" value="{{ $user->id }}">
-                                        <button type="submit" class="btn btn-info text-white mr-2">
-                                            Reset Harian
-                                        </button>
-                                    </form>
+                                    @if (($user->task_done_yesterday ?? 0) == ($user->task_limit ?? 0))
+                                        <form action="{{ url('/admin/reset-harian') }}" method="POST" class="d-inline">
+                                            @csrf
+                                            <input type="hidden" name="id" value="{{ $user->id }}">
+                                            <button type="submit" class="btn btn-info text-white mr-2">
+                                                Reset Harian ({{ $user->task_done_yesterday ?? 0 }}/{{ $user->task_limit ?? 0 }})
+                                            </button>
+                                        </form>
+                                    @else
+                                        <div class="btn btn-secondary mr-2">
+                                            Reset Harian ({{ $user->task_done_yesterday ?? 0 }}/{{ $user->task_limit ?? 0 }})
+                                        </div>
+                                    @endif
                                 </div>
 
                                 @else

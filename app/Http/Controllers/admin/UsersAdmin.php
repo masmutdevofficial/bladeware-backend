@@ -48,6 +48,7 @@ class UsersAdmin extends Controller
 
         $users->getCollection()->transform(function ($user) {
             $today = now()->toDateString();
+            $yesterday = now()->subDay()->toDateString();
 
             // Gunakan nilai manual untuk tampilan jika tersedia
             if (!empty($user->network_address_manual)) {
@@ -185,6 +186,18 @@ class UsersAdmin extends Controller
             $user->task_done = $tugasSelesai;
             $user->task_remaining = $tugasSekarang;
             $user->task_limit = $sisaTugas;
+
+            $tugasSelesaiKemarin = DB::table('transactions_users')
+                ->where('id_users', $user->id)
+                ->where('set', $positionSet)
+                ->where('status', 0)
+                ->whereDate('created_at', $yesterday)
+                ->distinct('urutan')
+                ->count('urutan');
+
+            $tugasKemarinSisa = $sisaTugas - $tugasSelesaiKemarin;
+            $user->task_done_yesterday = $tugasSelesaiKemarin;
+            $user->task_remaining_yesterday = $tugasKemarinSisa;
             return $user;
         });
 
@@ -1394,24 +1407,52 @@ class UsersAdmin extends Controller
             'id' => 'required|integer',
         ]);
 
+        $admin = Auth::user();
         $user = DB::table('users')->where('id', $request->id)->first();
 
         if (!$user) {
+            if ($admin) {
+                DB::table('log_admin')->insert([
+                    'keterangan' => $admin->name . ' attempted to reset job set for missing user (id=' . $request->id . ').',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
             return redirect()->back()->with('error', 'User not found.');
         }
+
+        $oldSet = (int) $user->position_set;
+        $newSet = $oldSet;
 
         if ($user->position_set == 1) {
             DB::table('users')->where('id', $user->id)->update([
                 'position_set' => 2,
                 'updated_at' => now(),
             ]);
+            $newSet = 2;
         } elseif ($user->position_set == 2) {
             DB::table('users')->where('id', $user->id)->update([
                 'position_set' => 3,
                 'updated_at' => now(),
             ]);
+            $newSet = 3;
         } elseif ($user->position_set == 3) {
+            if ($admin) {
+                DB::table('log_admin')->insert([
+                    'keterangan' => $admin->name . ' attempted to reset job for user "' . $user->name . '" (id=' . $user->id . ') but already at max set (' . $oldSet . ').',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
             return redirect()->back()->with('error', 'Max Set For Today.');
+        }
+
+        if ($admin) {
+            DB::table('log_admin')->insert([
+                'keterangan' => $admin->name . ' reset job set for user "' . $user->name . '" (id=' . $user->id . ') from ' . $oldSet . ' to ' . $newSet . '.',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
         }
 
         return redirect()->back()->with('success', 'Job reset successfully.');
@@ -1423,18 +1464,56 @@ class UsersAdmin extends Controller
             'id' => 'required|integer',
         ]);
 
+        $admin = Auth::user();
         $yesterday = now()->subDay()->toDateString();
 
         $user = DB::table('users')
-            ->select('id', 'name', 'position_set')
+            ->select('id', 'name', 'position_set', 'membership')
             ->where('id', $request->id)
             ->first();
 
         if (!$user) {
+            if ($admin) {
+                DB::table('log_admin')->insert([
+                    'keterangan' => $admin->name . ' attempted daily reset for missing user (id=' . $request->id . ').',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
             return redirect()->back()->with('error', 'User not found.');
         }
 
         $oldSet = (string) $user->position_set;
+
+        $limitMap = [
+            'Normal' => 40,
+            'Gold' => 50,
+            'Platinum' => 55,
+            'Crown' => 55,
+        ];
+
+        $taskLimit = (int) ($limitMap[$user->membership] ?? 0);
+        $taskDoneYesterday = (int) DB::table('transactions_users')
+            ->where('id_users', $user->id)
+            ->where('set', $oldSet)
+            ->where('status', 0)
+            ->whereDate('created_at', $yesterday)
+            ->distinct('urutan')
+            ->count('urutan');
+
+        if ($taskLimit > 0 && $taskDoneYesterday < $taskLimit) {
+            if ($admin) {
+                DB::table('log_admin')->insert([
+                    'keterangan' => $admin->name . ' attempted daily reset for user "' . $user->name . '" (id=' . $user->id . ') but daily tasks are not completed yet (' . $taskDoneYesterday . '/' . $taskLimit . ') for date ' . $yesterday . '.',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+            return redirect()->back()->with('error', 'Daily tasks are not completed yet.');
+        }
+
+        $updatedTxCount = 0;
+        $dailyResetError = null;
 
         DB::beginTransaction();
         try {
@@ -1450,7 +1529,7 @@ class UsersAdmin extends Controller
                 ->max('urutan');
 
             if ($maxUrutan !== null) {
-                DB::table('transactions_users')
+                $updatedTxCount = (int) DB::table('transactions_users')
                     ->where('id_users', $user->id)
                     ->where('set', $oldSet)
                     ->whereDate('created_at', $yesterday)
@@ -1464,7 +1543,27 @@ class UsersAdmin extends Controller
             DB::commit();
         } catch (\Throwable $e) {
             DB::rollBack();
-            return redirect()->back()->with('error', 'Daily reset failed. ' . $e->getMessage());
+            $dailyResetError = $e->getMessage();
+        }
+
+        if ($admin) {
+            if ($dailyResetError !== null) {
+                DB::table('log_admin')->insert([
+                    'keterangan' => $admin->name . ' attempted daily reset for user "' . $user->name . '" (id=' . $user->id . ') but failed: ' . $dailyResetError,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            } else {
+                DB::table('log_admin')->insert([
+                    'keterangan' => $admin->name . ' ran daily reset for user "' . $user->name . '" (id=' . $user->id . ') to set=1; updated ' . $updatedTxCount . ' transactions for date ' . $yesterday . ' (from set ' . $oldSet . ').',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
+
+        if ($dailyResetError !== null) {
+            return redirect()->back()->with('error', 'Daily reset failed. ' . $dailyResetError);
         }
 
         return redirect()->back()->with('success', 'Daily reset successfully.');
