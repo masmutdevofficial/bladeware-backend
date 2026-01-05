@@ -1502,10 +1502,6 @@ class UsersAdmin extends Controller
 
         DB::beginTransaction();
         try {
-            DB::table('users')->where('id', $user->id)->update([
-                'position_set' => 1,
-                'updated_at' => now(),
-            ]);
 
             // Mark current cycle transactions as reset so they won't be counted again
             $updatedTxCount = (int) DB::table('transactions_users')
