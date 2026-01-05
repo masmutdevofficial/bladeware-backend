@@ -1410,7 +1410,13 @@ class UsersAdmin extends Controller
         $oldSet = (int) $user->position_set;
         $newSet = $oldSet;
 
-        if ($user->position_set == 1) {
+        if ($user->position_set == 0) {
+            DB::table('users')->where('id', $user->id)->update([
+                'position_set' => 1,
+                'updated_at' => now(),
+            ]);
+            $newSet = 1;
+        } elseif ($user->position_set == 1) {
             DB::table('users')->where('id', $user->id)->update([
                 'position_set' => 2,
                 'updated_at' => now(),
@@ -1503,7 +1509,7 @@ class UsersAdmin extends Controller
         DB::beginTransaction();
         try {
             DB::table('users')->where('id', $user->id)->update([
-                'position_set' => 0,
+                'position_set' => 1,
                 'updated_at' => now(),
             ]);
 
