@@ -1410,25 +1410,8 @@ class UsersAdmin extends Controller
         $oldSet = (int) $user->position_set;
         $newSet = $oldSet;
 
-        if ($user->position_set == 0) {
-            DB::table('users')->where('id', $user->id)->update([
-                'position_set' => 1,
-                'updated_at' => now(),
-            ]);
-            $newSet = 1;
-        } elseif ($user->position_set == 1) {
-            DB::table('users')->where('id', $user->id)->update([
-                'position_set' => 2,
-                'updated_at' => now(),
-            ]);
-            $newSet = 2;
-        } elseif ($user->position_set == 2) {
-            DB::table('users')->where('id', $user->id)->update([
-                'position_set' => 3,
-                'updated_at' => now(),
-            ]);
-            $newSet = 3;
-        } elseif ($user->position_set == 3) {
+        // Determine next set
+        if ($user->position_set == 3) {
             if ($admin) {
                 DB::table('log_admin')->insert([
                     'keterangan' => $admin->name . ' attempted to reset job for user "' . $user->name . '" (id=' . $user->id . ') but already at max set (' . $oldSet . ').',
@@ -1439,9 +1422,54 @@ class UsersAdmin extends Controller
             return redirect()->back()->with('error', 'Max Set For Today.');
         }
 
+        if ($user->position_set == 0) {
+            $newSet = 1;
+        } elseif ($user->position_set == 1) {
+            $newSet = 2;
+        } elseif ($user->position_set == 2) {
+            $newSet = 3;
+        }
+
+        $updatedTxCount = 0;
+        $resetJobError = null;
+
+        DB::beginTransaction();
+        try {
+            DB::table('users')->where('id', $user->id)->update([
+                'position_set' => $newSet,
+                'updated_at' => now(),
+            ]);
+
+            // Mark previous set transactions as reset so they won't be counted again
+            $updatedTxCount = (int) DB::table('transactions_users')
+                ->where('id_users', $user->id)
+                ->where('set', (string) $oldSet)
+                ->where('is_reset', 'Belum')
+                ->update([
+                    'is_reset' => 'Sudah',
+                    'updated_at' => now(),
+                ]);
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            $resetJobError = $e->getMessage();
+        }
+
+        if ($resetJobError !== null) {
+            if ($admin) {
+                DB::table('log_admin')->insert([
+                    'keterangan' => $admin->name . ' attempted to reset job set for user "' . $user->name . '" (id=' . $user->id . ') from ' . $oldSet . ' to ' . $newSet . ' but failed: ' . $resetJobError,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+            return redirect()->back()->with('error', 'Job reset failed. ' . $resetJobError);
+        }
+
         if ($admin) {
             DB::table('log_admin')->insert([
-                'keterangan' => $admin->name . ' reset job set for user "' . $user->name . '" (id=' . $user->id . ') from ' . $oldSet . ' to ' . $newSet . '.',
+                'keterangan' => $admin->name . ' reset job set for user "' . $user->name . '" (id=' . $user->id . ') from ' . $oldSet . ' to ' . $newSet . '; marked ' . $updatedTxCount . ' transactions as is_reset=Sudah (from set ' . $oldSet . ').',
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
