@@ -1907,7 +1907,7 @@ public function getMembership(Request $request)
             $profitToday = DB::table('transactions_users')
                 ->where('id_users', $userId)
                 ->where('status', 0)
-                ->where('is_reset', 'Belum')
+                ->whereDate('created_at', Carbon::today()->toDateString())
                 ->sum('profit');
 
             return response()->json([
